@@ -7,9 +7,6 @@ the history of a chat.
 
 ## Tasks
 
-- Set up the project according to Rust and Ratatui best practices.
-  - You can already create the cocohibo command that will just print "ok".
-  - Set up the tests.
 - Implement the project list screen:
   - Project list is shown when the user starts the application.
   - It contains list of projects (folders in `~/.claude/projects`):

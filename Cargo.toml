@@ -1,0 +1,11 @@
+[package]
+name = "cocohibo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ratatui = "0.28"
+crossterm = "0.28"
+serde = { version = "1.0", features = ["derive"] }
+serde-jsonlines = "0.5"
+chrono = { version = "0.4", features = ["serde"] }
