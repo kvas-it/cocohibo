@@ -3,11 +3,11 @@ use ratatui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
 
-pub fn render(f: &mut Frame, app: &App) {
+pub fn render(f: &mut Frame, app: &mut App) {
     match app.screen {
         Screen::Projects => render_projects(f, app),
         Screen::Chats => render_chats(f, app),
@@ -15,7 +15,7 @@ pub fn render(f: &mut Frame, app: &App) {
     }
 }
 
-fn render_projects(f: &mut Frame, app: &App) {
+fn render_projects(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(1), Constraint::Length(1)])
@@ -45,6 +45,11 @@ fn render_projects(f: &mut Frame, app: &App) {
                     Span::raw("Use "),
                     Span::styled("↑↓/jk", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" to navigate, "),
+                    Span::styled(
+                        "PgUp/PgDn/Space",
+                        Style::default().add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(" to page, "),
                     Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" to select, "),
                     Span::styled("q/Esc", Style::default().add_modifier(Modifier::BOLD)),
@@ -58,12 +63,7 @@ fn render_projects(f: &mut Frame, app: &App) {
                 .add_modifier(Modifier::BOLD),
         );
 
-    let mut list_state = ListState::default();
-    if !app.projects.is_empty() {
-        list_state.select(Some(app.selected_project_index));
-    }
-
-    f.render_stateful_widget(list, chunks[0], &mut list_state);
+    f.render_stateful_widget(list, chunks[0], &mut app.projects_list_state);
 
     let status_text = if app.projects.is_empty() {
         "No projects found"
@@ -76,7 +76,7 @@ fn render_projects(f: &mut Frame, app: &App) {
     f.render_widget(status, chunks[1]);
 }
 
-fn render_chats(f: &mut Frame, app: &App) {
+fn render_chats(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(1), Constraint::Length(1)])
@@ -97,20 +97,20 @@ fn render_chats(f: &mut Frame, app: &App) {
         })
         .collect();
 
-    let project_name = app
-        .selected_project()
-        .map(|p| p.name.as_str())
-        .unwrap_or("Unknown");
-
     let list = List::new(chats)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(format!("Chats in {}", project_name))
+                .title("Chats in project")
                 .title_bottom(Line::from(vec![
                     Span::raw("Use "),
                     Span::styled("↑↓/jk", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" to navigate, "),
+                    Span::styled(
+                        "PgUp/PgDn/Space",
+                        Style::default().add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(" to page, "),
                     Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" to select, "),
                     Span::styled("Esc/q", Style::default().add_modifier(Modifier::BOLD)),
@@ -124,12 +124,12 @@ fn render_chats(f: &mut Frame, app: &App) {
                 .add_modifier(Modifier::BOLD),
         );
 
-    let mut list_state = ListState::default();
-    if !app.chats.is_empty() {
-        list_state.select(Some(app.selected_chat_index));
-    }
+    f.render_stateful_widget(list, chunks[0], &mut app.chats_list_state);
 
-    f.render_stateful_widget(list, chunks[0], &mut list_state);
+    let project_name = app
+        .selected_project()
+        .map(|p| p.name.as_str())
+        .unwrap_or("Unknown");
 
     let status_text = if app.chats.is_empty() {
         "No chats found"
@@ -142,7 +142,7 @@ fn render_chats(f: &mut Frame, app: &App) {
     f.render_widget(status, chunks[1]);
 }
 
-fn render_messages(f: &mut Frame, app: &App) {
+fn render_messages(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(1), Constraint::Length(1)])
@@ -182,24 +182,20 @@ fn render_messages(f: &mut Frame, app: &App) {
         })
         .collect();
 
-    let project_name = app
-        .selected_project()
-        .map(|p| p.name.as_str())
-        .unwrap_or("Unknown");
-    let chat_name = app
-        .selected_chat()
-        .map(|c| c.name.as_str())
-        .unwrap_or("Unknown");
-
     let list = List::new(messages)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(format!("Messages in {} > {}", project_name, chat_name))
+                .title("Messages in chat")
                 .title_bottom(Line::from(vec![
                     Span::raw("Use "),
                     Span::styled("↑↓/jk", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" to navigate, "),
+                    Span::styled(
+                        "PgUp/PgDn/Space",
+                        Style::default().add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(" to page, "),
                     Span::styled("Esc/q", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" to go back"),
                 ])),
@@ -211,12 +207,16 @@ fn render_messages(f: &mut Frame, app: &App) {
                 .add_modifier(Modifier::BOLD),
         );
 
-    let mut list_state = ListState::default();
-    if !app.messages.is_empty() {
-        list_state.select(Some(app.selected_message_index));
-    }
+    f.render_stateful_widget(list, chunks[0], &mut app.messages_list_state);
 
-    f.render_stateful_widget(list, chunks[0], &mut list_state);
+    let project_name = app
+        .selected_project()
+        .map(|p| p.name.as_str())
+        .unwrap_or("Unknown");
+    let chat_name = app
+        .selected_chat()
+        .map(|c| c.name.as_str())
+        .unwrap_or("Unknown");
 
     let status_text = if app.messages.is_empty() {
         "No messages found"

@@ -7,14 +7,6 @@ the history of a chat.
 
 ## Tasks
 
-- Implement message browsing in the messages screen:
-  - Show the currently selected message in the list (highlight it). Start with
-    the first message in the list.
-  - Allow scrolling through messages using arrow keys and `j`/`k`.
-  - If the message list doesn't fit the screen, allow scrolling, when the user
-    gets to the bottom of the screen (and scrolling up when the user is at the
-    top of the screen).
-  - The user can exit the messages screen with `Esc` or `q`.
 - Message hierarchy:
   - Messages can be nested (each message has `uid` and `parentUid` keys to
     represent the hierarchy).

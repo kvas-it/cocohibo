@@ -3,7 +3,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{backend::CrosstermBackend, layout::Rect, Terminal};
 use std::{env, io, path::PathBuf};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -57,9 +57,11 @@ fn run_app(app: &mut App) -> io::Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     loop {
+        let terminal_size = terminal.size()?;
+        let terminal_area = Rect::new(0, 0, terminal_size.width, terminal_size.height);
         terminal.draw(|f| ui::render(f, app))?;
 
-        events::handle_events(app)?;
+        events::handle_events(app, terminal_area)?;
 
         if app.should_quit {
             break;
