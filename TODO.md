@@ -7,16 +7,6 @@ the history of a chat.
 
 ## Tasks
 
-- Implement the project list screen:
-  - Project list is shown when the user starts the application.
-  - It contains list of projects (folders in `~/.claude/projects`):
-    - For each project, show (using columns):
-      - Name of the project (folder name).
-      - Last modified date of the project.
-      - Number of chats in the project (count files in the folder).
-    - Sort the list by last modified date.
-    - The user can exit the application from projects screen with `Esc` or `q`. 
-  - Use the List widget from Ratatui to display the list of projects.
 - Implement project selection, chats screen:
   - Show the currently selected project in the list (highlight it). Start with
     the first project in the list.
@@ -70,4 +60,15 @@ the history of a chat.
   - Show the current project (when available) and current chat (when available)
     in the status line at the bottom of the screen.
   - In the project list show "Project list" instead.
+- Customize the directory from where the projects are loaded:
+  - Default to `~/.claude/projects`.
+  - Allow specifying a different directory using the `--projects-dir` command line
+    argument.
+  - Allow specifying a different directory using the `COCOHIBO_PROJECTS_DIR`
+    environment variable.
+  - If the directory does not exist, show an error message and exit.
 - The user can exit the application with `Ctrl+C` from anywhere.
+- Adjust the column widths in the lists of projects and chats to use space more
+  efficiently:
+  - Projects list: show project name, last modified date, number of chats.
+  - Chats list: show chat name, last modified date, number of messages.

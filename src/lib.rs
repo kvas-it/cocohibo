@@ -1,14 +1,13 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+pub mod app;
+pub mod events;
+pub mod project;
+pub mod ui;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn smoke_test() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+        assert_eq!(2 + 2, 4);
     }
 }
