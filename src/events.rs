@@ -47,6 +47,8 @@ fn handle_key_event(app: &mut App, key: KeyEvent, terminal_area: Rect) {
         KeyCode::Char('z') => app.select_middle_of_screen(page_size),
         KeyCode::Char('t') => app.select_top_of_screen(),
         KeyCode::Char('b') => app.select_bottom_of_screen(page_size),
+        KeyCode::Char('J') => app.go_to_next_initial_message(),
+        KeyCode::Char('K') => app.go_to_previous_initial_message(),
         _ => {}
     }
 }

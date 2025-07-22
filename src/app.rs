@@ -1,4 +1,4 @@
-use crate::project::{Chat, Message, Project};
+use crate::project::{Chat, HierarchicalMessage, Project};
 use ratatui::widgets::ListState;
 use std::path::PathBuf;
 
@@ -191,7 +191,7 @@ impl<T> ListManagerTrait for ListManager<T> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Screen {
     Projects,
     Chats,
@@ -203,7 +203,7 @@ pub struct App {
     pub screen: Screen,
     pub projects: ListManager<Project>,
     pub chats: ListManager<Chat>,
-    pub messages: ListManager<Message>,
+    pub messages: ListManager<HierarchicalMessage>,
     pub projects_dir: PathBuf,
     pub should_quit: bool,
 }
@@ -241,7 +241,7 @@ impl App {
         self.chats.selected_item()
     }
 
-    pub fn selected_message(&self) -> Option<&Message> {
+    pub fn selected_message(&self) -> Option<&HierarchicalMessage> {
         self.messages.selected_item()
     }
 
@@ -264,7 +264,8 @@ impl App {
                 .projects_dir
                 .join(&project.name)
                 .join(format!("{}.jsonl", chat.name));
-            self.messages.items = crate::project::load_messages(&chat_path)?;
+            let messages = crate::project::load_messages(&chat_path)?;
+            self.messages.items = crate::project::build_message_hierarchy(messages);
             self.messages.state = ListState::default();
             if !self.messages.is_empty() {
                 self.messages.select(Some(0));
@@ -332,5 +333,46 @@ impl App {
 
     pub fn select_bottom_of_screen(&mut self, page_size: usize) {
         self.current_list_mut().select_bottom_of_screen(page_size);
+    }
+
+    pub fn go_to_next_initial_message(&mut self) {
+        if self.screen != Screen::Messages {
+            return;
+        }
+
+        let current_selection = self.messages.selected().unwrap_or(0);
+
+        // Find the next initial message after current selection
+        for (i, hierarchical_message) in self
+            .messages
+            .items
+            .iter()
+            .enumerate()
+            .skip(current_selection + 1)
+        {
+            if hierarchical_message.is_initial {
+                self.messages.select(Some(i));
+                return;
+            }
+        }
+    }
+
+    pub fn go_to_previous_initial_message(&mut self) {
+        if self.screen != Screen::Messages {
+            return;
+        }
+
+        let current_selection = self.messages.selected().unwrap_or(0);
+
+        // Find the previous initial message before current selection
+        for (i, hierarchical_message) in self.messages.items.iter().enumerate().rev() {
+            if i >= current_selection {
+                continue;
+            }
+            if hierarchical_message.is_initial {
+                self.messages.select(Some(i));
+                return;
+            }
+        }
     }
 }

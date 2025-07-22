@@ -155,9 +155,10 @@ fn render_messages(f: &mut Frame, app: &mut App) {
         .items
         .iter()
         .enumerate()
-        .filter_map(|(i, message)| {
+        .filter_map(|(i, hierarchical_message)| {
             // Safely handle each message individually
             std::panic::catch_unwind(|| {
+                let message = &hierarchical_message.message;
                 let _timestamp_str = message.timestamp.format("%H:%M:%S").to_string();
                 let role_display = match message.get_role() {
                     "user" => "USER",
@@ -165,13 +166,42 @@ fn render_messages(f: &mut Frame, app: &mut App) {
                     _ => "UNKN",
                 };
                 let content_text = message.get_content_text();
-                let content = format!(
-                    "{:<4} {:<8} {}",
+
+                // Create indentation: initial messages at 0, related messages at 2 spaces
+                let (indent, connector) = if hierarchical_message.is_initial {
+                    (String::new(), String::new())
+                } else {
+                    (
+                        "  ".to_string(),
+                        if hierarchical_message.has_continuation {
+                            "├─".to_string()
+                        } else {
+                            "└─".to_string()
+                        },
+                    )
+                };
+
+                // Adjust content width based on indentation
+                let total_prefix_len = indent.len() + connector.len();
+                let available_width = 58_usize.saturating_sub(total_prefix_len);
+
+                let content_with_indent = format!(
+                    "{:<4} {:<8} {}{}{}",
                     i + 1,
                     format!("[{}]", role_display),
-                    truncate_string(&content_text, 60)
+                    indent,
+                    connector,
+                    truncate_string(&content_text, available_width)
                 );
-                ListItem::new(Line::from(vec![Span::raw(content)]))
+                // Style initial messages in bold
+                if hierarchical_message.is_initial {
+                    ListItem::new(Line::from(vec![Span::styled(
+                        content_with_indent,
+                        Style::default().add_modifier(Modifier::BOLD),
+                    )]))
+                } else {
+                    ListItem::new(Line::from(vec![Span::raw(content_with_indent)]))
+                }
             })
             .unwrap_or_else(|_| {
                 // If there's a panic, create an error message item
@@ -194,11 +224,8 @@ fn render_messages(f: &mut Frame, app: &mut App) {
                     Span::raw("Use "),
                     Span::styled("↑↓/jk", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" to navigate, "),
-                    Span::styled(
-                        "PgUp/PgDn/Space",
-                        Style::default().add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw(" to page, "),
+                    Span::styled("J/K", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" for initial msgs, "),
                     Span::styled("Esc/q", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" to go back"),
                 ])),

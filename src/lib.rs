@@ -132,4 +132,75 @@ mod tests {
         assert_eq!(app.projects.selected(), Some(5));
         assert_eq!(app.projects.offset(), 2);
     }
+
+    #[test]
+    fn test_initial_message_navigation() {
+        let mut app = App::new(PathBuf::from("/tmp"));
+        app.screen = super::app::Screen::Messages;
+
+        // Create test messages with mixed initial and non-initial messages
+        app.messages.items = vec![
+            super::project::HierarchicalMessage::new(
+                super::project::Message {
+                    msg_type: "user".to_string(),
+                    message: None,
+                    timestamp: chrono::Utc::now(),
+                    uuid: "msg1".to_string(),
+                    parent_uuid: None,
+                    is_sidechain: None,
+                    session_id: None,
+                    role: None,
+                    content: None,
+                },
+                true, // is_initial
+                0,
+            ),
+            super::project::HierarchicalMessage::new(
+                super::project::Message {
+                    msg_type: "assistant".to_string(),
+                    message: None,
+                    timestamp: chrono::Utc::now(),
+                    uuid: "msg2".to_string(),
+                    parent_uuid: Some("msg1".to_string()),
+                    is_sidechain: None,
+                    session_id: None,
+                    role: None,
+                    content: None,
+                },
+                false, // not initial
+                1,
+            ),
+            super::project::HierarchicalMessage::new(
+                super::project::Message {
+                    msg_type: "user".to_string(),
+                    message: None,
+                    timestamp: chrono::Utc::now(),
+                    uuid: "msg3".to_string(),
+                    parent_uuid: None,
+                    is_sidechain: None,
+                    session_id: None,
+                    role: None,
+                    content: None,
+                },
+                true, // is_initial
+                0,
+            ),
+        ];
+
+        // Start at first message
+        app.messages.select(Some(0));
+
+        // Go to next initial message
+        app.go_to_next_initial_message();
+        assert_eq!(app.messages.selected(), Some(2)); // Should go to msg3
+
+        // Go to previous initial message
+        app.go_to_previous_initial_message();
+        assert_eq!(app.messages.selected(), Some(0)); // Should go back to msg1
+
+        // Test from non-initial message
+        app.messages.select(Some(1)); // Select msg2 (not initial)
+        app.go_to_next_initial_message();
+        assert_eq!(app.messages.selected(), Some(2)); // Should go to msg3
+    }
 }

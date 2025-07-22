@@ -7,20 +7,6 @@ the history of a chat.
 
 ## Tasks
 
-- Add more navigation keys to all lists:
-  - `g` - to go to the top of the list.
-  - `G` - to go to the bottom of the list.
-  - `z` - select the item in the middle of the screen. Don't change the scroll
-    position.
-  - `t` - select the item at the top of the screen. Don't change the scroll
-    position.
-  - `b` - select the item at the bottom of the screen. Don't change the scroll
-    position.
-- Message hierarchy:
-  - Messages can be nested (each message has `uid` and `parentUid` keys to
-    represent the hierarchy).
-  - Show the hierarchy of messages in the messages screen (submessages are
-    indented under their parent message). One indentation level is 2 spaces.
 - Display message details:
   - Messages have additional fields, some of which we would like to display in
     a richer way.

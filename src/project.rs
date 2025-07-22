@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
@@ -33,6 +34,12 @@ pub struct Message {
     pub message: Option<MessageInner>,
     pub timestamp: DateTime<Utc>,
     pub uuid: String,
+    #[serde(rename = "parentUuid")]
+    pub parent_uuid: Option<String>,
+    #[serde(default)]
+    pub is_sidechain: Option<bool>,
+    #[serde(rename = "sessionId", default)]
+    pub session_id: Option<String>,
     // For messages that don't have nested message structure
     #[serde(default)]
     pub role: Option<String>,
@@ -117,6 +124,109 @@ impl Message {
             }
         } else {
             &self.msg_type
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct HierarchicalMessage {
+    pub message: Message,
+    pub is_initial: bool,
+    pub chain_depth: usize,
+    pub has_continuation: bool,
+}
+
+impl HierarchicalMessage {
+    pub fn new(message: Message, is_initial: bool, chain_depth: usize) -> Self {
+        Self {
+            message,
+            is_initial,
+            chain_depth,
+            has_continuation: false,
+        }
+    }
+}
+
+pub fn build_message_hierarchy(messages: Vec<Message>) -> Vec<HierarchicalMessage> {
+    // Build a map of message UUID to message for quick lookup
+    let mut message_map: HashMap<String, Message> = HashMap::new();
+    let mut children_map: HashMap<String, Vec<String>> = HashMap::new();
+    let mut root_messages = Vec::new();
+
+    // First pass: build lookup maps
+    for message in messages {
+        message_map.insert(message.uuid.clone(), message.clone());
+
+        if let Some(parent_uuid) = &message.parent_uuid {
+            children_map
+                .entry(parent_uuid.clone())
+                .or_default()
+                .push(message.uuid.clone());
+        } else {
+            root_messages.push(message.uuid.clone());
+        }
+    }
+
+    // Sort root messages by timestamp
+    root_messages.sort_by(|a, b| {
+        let msg_a = message_map.get(a).unwrap();
+        let msg_b = message_map.get(b).unwrap();
+        msg_a.timestamp.cmp(&msg_b.timestamp)
+    });
+
+    let mut hierarchical_messages = Vec::new();
+
+    // Build chains starting from each root message
+    for root_uuid in root_messages {
+        if let Some(root_message) = message_map.get(&root_uuid) {
+            // Add the root message as initial
+            let mut root_hierarchical = HierarchicalMessage::new(root_message.clone(), true, 0);
+            root_hierarchical.has_continuation = children_map.contains_key(&root_uuid);
+            hierarchical_messages.push(root_hierarchical);
+
+            // Add all messages in the chain stemming from this root
+            add_chain_messages(
+                &root_uuid,
+                1,
+                &message_map,
+                &children_map,
+                &mut hierarchical_messages,
+            );
+        }
+    }
+
+    hierarchical_messages
+}
+
+fn add_chain_messages(
+    parent_uuid: &str,
+    chain_depth: usize,
+    message_map: &HashMap<String, Message>,
+    children_map: &HashMap<String, Vec<String>>,
+    result: &mut Vec<HierarchicalMessage>,
+) {
+    if let Some(child_uuids) = children_map.get(parent_uuid) {
+        // Sort children by timestamp
+        let mut sorted_children: Vec<_> = child_uuids
+            .iter()
+            .filter_map(|uuid| message_map.get(uuid).map(|msg| (uuid.clone(), msg.clone())))
+            .collect();
+        sorted_children.sort_by(|(_, a), (_, b)| a.timestamp.cmp(&b.timestamp));
+
+        for (child_uuid, child_message) in sorted_children {
+            let mut child_hierarchical =
+                HierarchicalMessage::new(child_message, false, chain_depth);
+            child_hierarchical.has_continuation = children_map.contains_key(&child_uuid);
+            result.push(child_hierarchical);
+
+            // Continue the chain recursively
+            add_chain_messages(
+                &child_uuid,
+                chain_depth + 1,
+                message_map,
+                children_map,
+                result,
+            );
         }
     }
 }
