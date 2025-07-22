@@ -7,11 +7,6 @@ the history of a chat.
 
 ## Tasks
 
-- Display message details:
-  - Messages have additional fields, some of which we would like to display in
-    a richer way.
-  - Look at existing messages in some chats to figure out the data model. Make
-    a proposal for the data model and how to display it.
 - Status line:
   - Show the current project (when available) and current chat (when available)
     in the status line at the bottom of the screen.

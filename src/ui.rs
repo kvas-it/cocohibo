@@ -145,11 +145,45 @@ fn render_chats(f: &mut Frame, app: &mut App) {
 }
 
 fn render_messages(f: &mut Frame, app: &mut App) {
-    let chunks = Layout::default()
+    let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(1), Constraint::Length(1)])
         .split(f.area());
 
+    // Split the main content area into two panes: list and details
+    let content_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(30), Constraint::Min(30)])
+        .split(main_chunks[0]);
+
+    // Render message list in left pane
+    render_message_list(f, app, content_chunks[0]);
+    
+    // Render message details in right pane
+    render_message_details(f, app, content_chunks[1]);
+
+    // Render status line
+    let project_name = app
+        .selected_project()
+        .map(|p| p.name.as_str())
+        .unwrap_or("Unknown");
+    let chat_name = app
+        .selected_chat()
+        .map(|c| c.name.as_str())
+        .unwrap_or("Unknown");
+
+    let status_text = if app.messages.is_empty() {
+        "No messages found"
+    } else {
+        &format!("{} > {} > Messages", project_name, chat_name)
+    };
+
+    let status =
+        Paragraph::new(status_text).style(Style::default().fg(Color::White).bg(Color::Blue));
+    f.render_widget(status, main_chunks[1]);
+}
+
+fn render_message_list(f: &mut Frame, app: &mut App, area: ratatui::layout::Rect) {
     let messages: Vec<ListItem> = app
         .messages
         .items
@@ -159,7 +193,6 @@ fn render_messages(f: &mut Frame, app: &mut App) {
             // Safely handle each message individually
             std::panic::catch_unwind(|| {
                 let message = &hierarchical_message.message;
-                let _timestamp_str = message.timestamp.format("%H:%M:%S").to_string();
                 let role_display = match message.get_role() {
                     "user" => "USER",
                     "assistant" => "ASST",
@@ -181,18 +214,19 @@ fn render_messages(f: &mut Frame, app: &mut App) {
                     )
                 };
 
-                // Adjust content width based on indentation
+                // Adjust content width for narrower left pane
                 let total_prefix_len = indent.len() + connector.len();
-                let available_width = 58_usize.saturating_sub(total_prefix_len);
+                let available_width = (area.width as usize).saturating_sub(20).saturating_sub(total_prefix_len);
 
                 let content_with_indent = format!(
-                    "{:<4} {:<8} {}{}{}",
+                    "{:<3} {:<4} {}{}{}",
                     i + 1,
                     format!("[{}]", role_display),
                     indent,
                     connector,
                     truncate_string(&content_text, available_width)
                 );
+                
                 // Style initial messages in bold
                 if hierarchical_message.is_initial {
                     ListItem::new(Line::from(vec![Span::styled(
@@ -206,7 +240,7 @@ fn render_messages(f: &mut Frame, app: &mut App) {
             .unwrap_or_else(|_| {
                 // If there's a panic, create an error message item
                 ListItem::new(Line::from(vec![Span::raw(format!(
-                    "{:<4} {:<8} [Error rendering message]",
+                    "{:<3} {:<4} [Error rendering message]",
                     i + 1,
                     "[ERR]"
                 ))]))
@@ -219,15 +253,15 @@ fn render_messages(f: &mut Frame, app: &mut App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Messages in chat")
+                .title("Messages")
                 .title_bottom(Line::from(vec![
                     Span::raw("Use "),
                     Span::styled("↑↓/jk", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to navigate, "),
+                    Span::raw(" navigate, "),
                     Span::styled("J/K", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" for initial msgs, "),
+                    Span::raw(" initial msgs, "),
                     Span::styled("Esc/q", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to go back"),
+                    Span::raw(" back"),
                 ])),
         )
         .highlight_style(
@@ -237,26 +271,133 @@ fn render_messages(f: &mut Frame, app: &mut App) {
                 .add_modifier(Modifier::BOLD),
         );
 
-    f.render_stateful_widget(list, chunks[0], &mut app.messages.state);
+    f.render_stateful_widget(list, area, &mut app.messages.state);
+}
 
-    let project_name = app
-        .selected_project()
-        .map(|p| p.name.as_str())
-        .unwrap_or("Unknown");
-    let chat_name = app
-        .selected_chat()
-        .map(|c| c.name.as_str())
-        .unwrap_or("Unknown");
+fn render_message_details(f: &mut Frame, app: &mut App, area: ratatui::layout::Rect) {
+    if let Some(selected_message) = app.selected_message() {
+        let message = &selected_message.message;
+        
+        let mut details = Vec::new();
 
-    let status_text = if app.messages.is_empty() {
-        "No messages found"
+        // Header with basic info
+        details.push(Line::from(vec![
+            Span::styled("Message Details", Style::default().add_modifier(Modifier::BOLD))
+        ]));
+        details.push(Line::from("".to_string()));
+
+        // UUID and timestamp
+        details.push(Line::from(format!("UUID: {}", message.uuid)));
+        details.push(Line::from(format!("Time: {}", message.timestamp.format("%Y-%m-%d %H:%M:%S"))));
+        details.push(Line::from(format!("Type: {}", message.msg_type)));
+        details.push(Line::from(format!("Role: {}", message.get_role())));
+
+        // Hierarchical info
+        if selected_message.is_initial {
+            details.push(Line::from("Status: Initial message"));
+        } else {
+            details.push(Line::from(format!("Depth: {} (chain message)", selected_message.chain_depth)));
+        }
+
+        if let Some(parent) = &message.parent_uuid {
+            details.push(Line::from(format!("Parent: {}", truncate_string(parent, 36))));
+        }
+
+        details.push(Line::from("".to_string()));
+
+        // Metadata section
+        if message.user_type.is_some() || message.cwd.is_some() || message.version.is_some() {
+            details.push(Line::from(vec![
+                Span::styled("Metadata:", Style::default().add_modifier(Modifier::BOLD))
+            ]));
+            
+            if let Some(user_type) = &message.user_type {
+                details.push(Line::from(format!("User Type: {}", user_type)));
+            }
+            if let Some(cwd) = &message.cwd {
+                details.push(Line::from(format!("Working Dir: {}", truncate_string(cwd, 40))));
+            }
+            if let Some(version) = &message.version {
+                details.push(Line::from(format!("Version: {}", version)));
+            }
+            if let Some(git_branch) = &message.git_branch {
+                details.push(Line::from(format!("Git Branch: {}", git_branch)));
+            }
+            if let Some(is_meta) = &message.is_meta {
+                details.push(Line::from(format!("Meta: {}", is_meta)));
+            }
+            details.push(Line::from("".to_string()));
+        }
+
+        // Assistant-specific info
+        if message.model.is_some() || message.usage.is_some() {
+            details.push(Line::from(vec![
+                Span::styled("Assistant Info:", Style::default().add_modifier(Modifier::BOLD))
+            ]));
+            
+            if let Some(model) = &message.model {
+                details.push(Line::from(format!("Model: {}", model)));
+            }
+            if let Some(request_id) = &message.request_id {
+                details.push(Line::from(format!("Request ID: {}", truncate_string(request_id, 30))));
+            }
+            if let Some(stop_reason) = &message.stop_reason {
+                details.push(Line::from(format!("Stop Reason: {}", stop_reason)));
+            }
+            if let Some(usage) = &message.usage {
+                details.push(Line::from("Token Usage:"));
+                if let Some(input) = usage.input_tokens {
+                    details.push(Line::from(format!("  Input: {}", input)));
+                }
+                if let Some(output) = usage.output_tokens {
+                    details.push(Line::from(format!("  Output: {}", output)));
+                }
+                if let Some(cache_create) = usage.cache_creation_input_tokens {
+                    details.push(Line::from(format!("  Cache Create: {}", cache_create)));
+                }
+                if let Some(cache_read) = usage.cache_read_input_tokens {
+                    details.push(Line::from(format!("  Cache Read: {}", cache_read)));
+                }
+                if let Some(tier) = &usage.service_tier {
+                    details.push(Line::from(format!("  Service Tier: {}", tier)));
+                }
+            }
+            details.push(Line::from("".to_string()));
+        }
+
+        // Content section
+        details.push(Line::from(vec![
+            Span::styled("Content:", Style::default().add_modifier(Modifier::BOLD))
+        ]));
+        let content_text = message.get_content_text();
+        let content_lines: Vec<Line> = content_text
+            .lines()
+            .take(20) // Limit to avoid overwhelming the display
+            .map(|line| Line::from(truncate_string(line, area.width as usize - 4)))
+            .collect();
+        details.extend(content_lines);
+
+        let paragraph = Paragraph::new(details)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Details")
+            )
+            .wrap(ratatui::widgets::Wrap { trim: true });
+
+        f.render_widget(paragraph, area);
     } else {
-        &format!("{} > {} > Messages", project_name, chat_name)
-    };
+        // Show placeholder when no message is selected
+        let placeholder = Paragraph::new("No message selected")
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Details")
+            )
+            .style(Style::default().fg(Color::DarkGray));
 
-    let status =
-        Paragraph::new(status_text).style(Style::default().fg(Color::White).bg(Color::Blue));
-    f.render_widget(status, chunks[1]);
+        f.render_widget(placeholder, area);
+    }
 }
 
 fn truncate_string(s: &str, max_len: usize) -> String {

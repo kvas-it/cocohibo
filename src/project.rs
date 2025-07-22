@@ -5,6 +5,16 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+fn default_timestamp() -> DateTime<Utc> {
+    DateTime::<Utc>::from_timestamp(0, 0).unwrap_or_else(Utc::now)
+}
+
+fn default_uuid() -> String {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(1);
+    format!("generated-uuid-{}", COUNTER.fetch_add(1, Ordering::SeqCst))
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Project {
     pub name: String,
@@ -27,12 +37,28 @@ pub struct MessageInner {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Usage {
+    #[serde(default)]
+    pub input_tokens: Option<u32>,
+    #[serde(default)]
+    pub output_tokens: Option<u32>,
+    #[serde(default)]
+    pub cache_creation_input_tokens: Option<u32>,
+    #[serde(default)]
+    pub cache_read_input_tokens: Option<u32>,
+    #[serde(default)]
+    pub service_tier: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     #[serde(rename = "type")]
     pub msg_type: String,
     #[serde(default)]
     pub message: Option<MessageInner>,
+    #[serde(default = "default_timestamp")]
     pub timestamp: DateTime<Utc>,
+    #[serde(default = "default_uuid")]
     pub uuid: String,
     #[serde(rename = "parentUuid")]
     pub parent_uuid: Option<String>,
@@ -45,6 +71,28 @@ pub struct Message {
     pub role: Option<String>,
     #[serde(default)]
     pub content: Option<Value>,
+    // Additional metadata fields
+    #[serde(rename = "userType", default)]
+    pub user_type: Option<String>,
+    #[serde(default)]
+    pub cwd: Option<String>,
+    #[serde(default)]
+    pub version: Option<String>,
+    #[serde(rename = "gitBranch", default)]
+    pub git_branch: Option<String>,
+    #[serde(rename = "isMeta", default)]
+    pub is_meta: Option<bool>,
+    // Assistant-specific fields
+    #[serde(rename = "requestId", default)]
+    pub request_id: Option<String>,
+    #[serde(default)]
+    pub model: Option<String>,
+    #[serde(default)]
+    pub usage: Option<Usage>,
+    #[serde(rename = "stop_reason", default)]
+    pub stop_reason: Option<String>,
+    #[serde(rename = "stop_sequence", default)]
+    pub stop_sequence: Option<String>,
 }
 
 impl Message {

@@ -1,0 +1,5 @@
+{"parentUuid":null,"type":"user","message":{"role":"user","content":"This message has no timestamp"},"uuid":"no-timestamp-msg"}
+{"type":"user","message":{"role":"user","content":"This message also has no timestamp"},"uuid":"no-timestamp-msg2","parentUuid":"no-timestamp-msg"}
+{"type":"assistant","message":{"role":"assistant","content":"Response without timestamp"},"uuid":"assistant-no-timestamp","parentUuid":"no-timestamp-msg2","timestamp":"2025-01-15T10:00:00.000Z"}
+{"parentUuid":null,"type":"user","message":{"role":"user","content":"This message has no UUID"},"timestamp":"2025-01-15T10:00:00.000Z"}
+{"type":"user","message":{"role":"user","content":"This message has neither UUID nor timestamp"}}
