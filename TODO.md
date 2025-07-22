@@ -7,19 +7,6 @@ the history of a chat.
 
 ## Tasks
 
-- Implement chat selection in the chats screen, start messages screen:
-  - Show the currently selected chat in the list (highlight it). Start with
-    the first chat in the list.
-  - Allow moving selection up and down using arrow keys and `j`/`k`.
-  - If the chat list doesn't fit the screen, allow scrolling, when the user
-    gets to the bottom of the screen (and scrolling up when the user is at the
-    top of the screen).
-  - Allow opening selected chat with `Enter`.
-  - When the chat is opened, show the messages screen:
-    - It contains list of messages in the chat.
-    - For each message, show:
-      - Timestamp of the message.
-      - Type of the message (e.g. "user" or "assistant").
 - Implement message browsing in the messages screen:
   - Show the currently selected message in the list (highlight it). Start with
     the first message in the list.

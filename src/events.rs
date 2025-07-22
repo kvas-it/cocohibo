@@ -26,8 +26,13 @@ fn handle_key_event(app: &mut App, key: KeyEvent) {
         KeyCode::Up | KeyCode::Char('k') => app.move_selection_up(),
         KeyCode::Down | KeyCode::Char('j') => app.move_selection_down(),
         KeyCode::Enter => {
-            if let Err(e) = app.open_project() {
-                eprintln!("Error opening project: {}", e);
+            let result = match app.screen {
+                crate::app::Screen::Projects => app.open_project(),
+                crate::app::Screen::Chats => app.open_chat(),
+                crate::app::Screen::Messages => Ok(()), // No further navigation from messages
+            };
+            if let Err(e) = result {
+                eprintln!("Error opening: {}", e);
             }
         }
         _ => {}

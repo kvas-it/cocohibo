@@ -1,10 +1,11 @@
-use crate::project::{Chat, Project};
+use crate::project::{Chat, Message, Project};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub enum Screen {
     Projects,
     Chats,
+    Messages,
 }
 
 #[derive(Debug)]
@@ -14,6 +15,8 @@ pub struct App {
     pub selected_project_index: usize,
     pub chats: Vec<Chat>,
     pub selected_chat_index: usize,
+    pub messages: Vec<Message>,
+    pub selected_message_index: usize,
     pub projects_dir: PathBuf,
     pub should_quit: bool,
 }
@@ -26,6 +29,8 @@ impl App {
             selected_project_index: 0,
             chats: Vec::new(),
             selected_chat_index: 0,
+            messages: Vec::new(),
+            selected_message_index: 0,
             projects_dir,
             should_quit: false,
         }
@@ -49,6 +54,10 @@ impl App {
         self.chats.get(self.selected_chat_index)
     }
 
+    pub fn selected_message(&self) -> Option<&Message> {
+        self.messages.get(self.selected_message_index)
+    }
+
     pub fn open_project(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(project) = self.selected_project() {
             let project_path = self.projects_dir.join(&project.name);
@@ -59,8 +68,25 @@ impl App {
         Ok(())
     }
 
+    pub fn open_chat(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        if let (Some(project), Some(chat)) = (self.selected_project(), self.selected_chat()) {
+            let chat_path = self
+                .projects_dir
+                .join(&project.name)
+                .join(format!("{}.jsonl", chat.name));
+            self.messages = crate::project::load_messages(&chat_path)?;
+            self.selected_message_index = 0;
+            self.screen = Screen::Messages;
+        }
+        Ok(())
+    }
+
     pub fn go_back(&mut self) {
         match self.screen {
+            Screen::Messages => {
+                self.screen = Screen::Chats;
+                self.messages.clear();
+            }
             Screen::Chats => {
                 self.screen = Screen::Projects;
                 self.chats.clear();
@@ -83,6 +109,11 @@ impl App {
                     self.selected_chat_index -= 1;
                 }
             }
+            Screen::Messages => {
+                if self.selected_message_index > 0 {
+                    self.selected_message_index -= 1;
+                }
+            }
         }
     }
 
@@ -96,6 +127,11 @@ impl App {
             Screen::Chats => {
                 if self.selected_chat_index + 1 < self.chats.len() {
                     self.selected_chat_index += 1;
+                }
+            }
+            Screen::Messages => {
+                if self.selected_message_index + 1 < self.messages.len() {
+                    self.selected_message_index += 1;
                 }
             }
         }
