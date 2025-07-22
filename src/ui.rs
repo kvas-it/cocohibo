@@ -23,6 +23,7 @@ fn render_projects(f: &mut Frame, app: &mut App) {
 
     let projects: Vec<ListItem> = app
         .projects
+        .items
         .iter()
         .map(|project| {
             let date_str = project.last_modified.format("%Y-%m-%d %H:%M").to_string();
@@ -63,7 +64,7 @@ fn render_projects(f: &mut Frame, app: &mut App) {
                 .add_modifier(Modifier::BOLD),
         );
 
-    f.render_stateful_widget(list, chunks[0], &mut app.projects_list_state);
+    f.render_stateful_widget(list, chunks[0], &mut app.projects.state);
 
     let status_text = if app.projects.is_empty() {
         "No projects found"
@@ -84,6 +85,7 @@ fn render_chats(f: &mut Frame, app: &mut App) {
 
     let chats: Vec<ListItem> = app
         .chats
+        .items
         .iter()
         .map(|chat| {
             let date_str = chat.last_modified.format("%Y-%m-%d %H:%M").to_string();
@@ -124,7 +126,7 @@ fn render_chats(f: &mut Frame, app: &mut App) {
                 .add_modifier(Modifier::BOLD),
         );
 
-    f.render_stateful_widget(list, chunks[0], &mut app.chats_list_state);
+    f.render_stateful_widget(list, chunks[0], &mut app.chats.state);
 
     let project_name = app
         .selected_project()
@@ -150,6 +152,7 @@ fn render_messages(f: &mut Frame, app: &mut App) {
 
     let messages: Vec<ListItem> = app
         .messages
+        .items
         .iter()
         .enumerate()
         .filter_map(|(i, message)| {
@@ -207,7 +210,7 @@ fn render_messages(f: &mut Frame, app: &mut App) {
                 .add_modifier(Modifier::BOLD),
         );
 
-    f.render_stateful_widget(list, chunks[0], &mut app.messages_list_state);
+    f.render_stateful_widget(list, chunks[0], &mut app.messages.state);
 
     let project_name = app
         .selected_project()

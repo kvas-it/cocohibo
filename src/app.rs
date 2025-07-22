@@ -2,6 +2,195 @@ use crate::project::{Chat, Message, Project};
 use ratatui::widgets::ListState;
 use std::path::PathBuf;
 
+pub trait ListManagerTrait {
+    fn move_up(&mut self, page_size: usize);
+    fn move_down(&mut self, page_size: usize);
+    fn page_up(&mut self, page_size: usize);
+    fn page_down(&mut self, page_size: usize);
+    fn go_to_top(&mut self);
+    fn go_to_bottom(&mut self);
+    fn select_middle_of_screen(&mut self, page_size: usize);
+    fn select_top_of_screen(&mut self);
+    fn select_bottom_of_screen(&mut self, page_size: usize);
+}
+
+#[derive(Debug)]
+pub struct ListManager<T> {
+    pub items: Vec<T>,
+    pub state: ListState,
+}
+
+impl<T> Default for ListManager<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> ListManager<T> {
+    pub fn new() -> Self {
+        Self {
+            items: Vec::new(),
+            state: ListState::default(),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+
+    pub fn selected(&self) -> Option<usize> {
+        self.state.selected()
+    }
+
+    pub fn selected_item(&self) -> Option<&T> {
+        self.state.selected().and_then(|i| self.items.get(i))
+    }
+
+    pub fn select(&mut self, index: Option<usize>) {
+        self.state.select(index);
+    }
+
+    pub fn offset(&self) -> usize {
+        self.state.offset()
+    }
+
+    pub fn set_offset(&mut self, offset: usize) {
+        *self.state.offset_mut() = offset;
+    }
+
+    pub fn move_up(&mut self, page_size: usize) {
+        let current_selection = self.state.selected().unwrap_or(0);
+        if current_selection > 0 {
+            self.state.select(Some(current_selection - 1));
+            self.scroll_to_selected(page_size);
+        }
+    }
+
+    pub fn move_down(&mut self, page_size: usize) {
+        let current_selection = self.state.selected().unwrap_or(0);
+        let max_index = self.items.len().saturating_sub(1);
+        if current_selection < max_index {
+            self.state.select(Some(current_selection + 1));
+            self.scroll_to_selected(page_size);
+        }
+    }
+
+    pub fn page_up(&mut self, page_size: usize) {
+        let current_selection = self.state.selected().unwrap_or(0);
+        let current_offset = self.state.offset();
+        let new_offset = current_offset.saturating_sub(page_size);
+        let selection_offset = current_selection.saturating_sub(current_offset);
+        let new_selection = (new_offset + selection_offset).min(self.items.len().saturating_sub(1));
+
+        *self.state.offset_mut() = new_offset;
+        self.state.select(Some(new_selection));
+    }
+
+    pub fn page_down(&mut self, page_size: usize) {
+        let current_selection = self.state.selected().unwrap_or(0);
+        let current_offset = self.state.offset();
+        let max_offset = self.items.len().saturating_sub(page_size);
+        let new_offset = (current_offset + page_size).min(max_offset);
+        let selection_offset = current_selection.saturating_sub(current_offset);
+        let new_selection = (new_offset + selection_offset).min(self.items.len().saturating_sub(1));
+
+        *self.state.offset_mut() = new_offset;
+        self.state.select(Some(new_selection));
+    }
+
+    pub fn go_to_top(&mut self) {
+        if !self.items.is_empty() {
+            self.state.select(Some(0));
+            *self.state.offset_mut() = 0;
+        }
+    }
+
+    pub fn go_to_bottom(&mut self) {
+        if !self.items.is_empty() {
+            let last_index = self.items.len() - 1;
+            self.state.select(Some(last_index));
+        }
+    }
+
+    pub fn select_middle_of_screen(&mut self, page_size: usize) {
+        if !self.items.is_empty() {
+            let offset = self.state.offset();
+            let middle_index = (offset + page_size / 2).min(self.items.len() - 1);
+            self.state.select(Some(middle_index));
+        }
+    }
+
+    pub fn select_top_of_screen(&mut self) {
+        if !self.items.is_empty() {
+            let offset = self.state.offset();
+            let top_index = offset.min(self.items.len() - 1);
+            self.state.select(Some(top_index));
+        }
+    }
+
+    pub fn select_bottom_of_screen(&mut self, page_size: usize) {
+        if !self.items.is_empty() {
+            let offset = self.state.offset();
+            let bottom_index = (offset + page_size - 1).min(self.items.len() - 1);
+            self.state.select(Some(bottom_index));
+        }
+    }
+
+    fn scroll_to_selected(&mut self, visible_area: usize) {
+        if let Some(selected) = self.state.selected() {
+            let offset = self.state.offset();
+
+            if selected < offset {
+                *self.state.offset_mut() = selected;
+            } else if selected >= offset + visible_area {
+                *self.state.offset_mut() = selected.saturating_sub(visible_area - 1);
+            }
+        }
+    }
+}
+
+impl<T> ListManagerTrait for ListManager<T> {
+    fn move_up(&mut self, page_size: usize) {
+        self.move_up(page_size);
+    }
+
+    fn move_down(&mut self, page_size: usize) {
+        self.move_down(page_size);
+    }
+
+    fn page_up(&mut self, page_size: usize) {
+        self.page_up(page_size);
+    }
+
+    fn page_down(&mut self, page_size: usize) {
+        self.page_down(page_size);
+    }
+
+    fn go_to_top(&mut self) {
+        self.go_to_top();
+    }
+
+    fn go_to_bottom(&mut self) {
+        self.go_to_bottom();
+    }
+
+    fn select_middle_of_screen(&mut self, page_size: usize) {
+        self.select_middle_of_screen(page_size);
+    }
+
+    fn select_top_of_screen(&mut self) {
+        self.select_top_of_screen();
+    }
+
+    fn select_bottom_of_screen(&mut self, page_size: usize) {
+        self.select_bottom_of_screen(page_size);
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Screen {
     Projects,
@@ -12,12 +201,9 @@ pub enum Screen {
 #[derive(Debug)]
 pub struct App {
     pub screen: Screen,
-    pub projects: Vec<Project>,
-    pub projects_list_state: ListState,
-    pub chats: Vec<Chat>,
-    pub chats_list_state: ListState,
-    pub messages: Vec<Message>,
-    pub messages_list_state: ListState,
+    pub projects: ListManager<Project>,
+    pub chats: ListManager<Chat>,
+    pub messages: ListManager<Message>,
     pub projects_dir: PathBuf,
     pub should_quit: bool,
 }
@@ -26,12 +212,9 @@ impl App {
     pub fn new(projects_dir: PathBuf) -> Self {
         Self {
             screen: Screen::Projects,
-            projects: Vec::new(),
-            projects_list_state: ListState::default(),
-            chats: Vec::new(),
-            chats_list_state: ListState::default(),
-            messages: Vec::new(),
-            messages_list_state: ListState::default(),
+            projects: ListManager::new(),
+            chats: ListManager::new(),
+            messages: ListManager::new(),
             projects_dir,
             should_quit: false,
         }
@@ -42,39 +225,33 @@ impl App {
     }
 
     pub fn load_projects(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.projects = crate::project::discover_projects(&self.projects_dir)?;
-        self.projects_list_state = ListState::default();
+        self.projects.items = crate::project::discover_projects(&self.projects_dir)?;
+        self.projects.state = ListState::default();
         if !self.projects.is_empty() {
-            self.projects_list_state.select(Some(0));
+            self.projects.select(Some(0));
         }
         Ok(())
     }
 
     pub fn selected_project(&self) -> Option<&Project> {
-        self.projects_list_state
-            .selected()
-            .and_then(|i| self.projects.get(i))
+        self.projects.selected_item()
     }
 
     pub fn selected_chat(&self) -> Option<&Chat> {
-        self.chats_list_state
-            .selected()
-            .and_then(|i| self.chats.get(i))
+        self.chats.selected_item()
     }
 
     pub fn selected_message(&self) -> Option<&Message> {
-        self.messages_list_state
-            .selected()
-            .and_then(|i| self.messages.get(i))
+        self.messages.selected_item()
     }
 
     pub fn open_project(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(project) = self.selected_project() {
             let project_path = self.projects_dir.join(&project.name);
-            self.chats = crate::project::discover_chats(&project_path)?;
-            self.chats_list_state = ListState::default();
+            self.chats.items = crate::project::discover_chats(&project_path)?;
+            self.chats.state = ListState::default();
             if !self.chats.is_empty() {
-                self.chats_list_state.select(Some(0));
+                self.chats.select(Some(0));
             }
             self.screen = Screen::Chats;
         }
@@ -87,10 +264,10 @@ impl App {
                 .projects_dir
                 .join(&project.name)
                 .join(format!("{}.jsonl", chat.name));
-            self.messages = crate::project::load_messages(&chat_path)?;
-            self.messages_list_state = ListState::default();
+            self.messages.items = crate::project::load_messages(&chat_path)?;
+            self.messages.state = ListState::default();
             if !self.messages.is_empty() {
-                self.messages_list_state.select(Some(0));
+                self.messages.select(Some(0));
             }
             self.screen = Screen::Messages;
         }
@@ -101,11 +278,11 @@ impl App {
         match self.screen {
             Screen::Messages => {
                 self.screen = Screen::Chats;
-                self.messages.clear();
+                self.messages.items.clear();
             }
             Screen::Chats => {
                 self.screen = Screen::Projects;
-                self.chats.clear();
+                self.chats.items.clear();
             }
             Screen::Projects => {
                 self.quit();
@@ -113,306 +290,47 @@ impl App {
         }
     }
 
-    pub fn move_selection_up_with_size(&mut self, page_size: usize) {
+    fn current_list_mut(&mut self) -> &mut dyn ListManagerTrait {
         match self.screen {
-            Screen::Projects => {
-                let current_selection = self.projects_list_state.selected().unwrap_or(0);
-                if current_selection > 0 {
-                    self.projects_list_state.select(Some(current_selection - 1));
-                    self.scroll_to_selected_with_size(page_size);
-                }
-            }
-            Screen::Chats => {
-                let current_selection = self.chats_list_state.selected().unwrap_or(0);
-                if current_selection > 0 {
-                    self.chats_list_state.select(Some(current_selection - 1));
-                    self.scroll_to_selected_with_size(page_size);
-                }
-            }
-            Screen::Messages => {
-                let current_selection = self.messages_list_state.selected().unwrap_or(0);
-                if current_selection > 0 {
-                    self.messages_list_state.select(Some(current_selection - 1));
-                    self.scroll_to_selected_with_size(page_size);
-                }
-            }
+            Screen::Projects => &mut self.projects,
+            Screen::Chats => &mut self.chats,
+            Screen::Messages => &mut self.messages,
         }
+    }
+
+    pub fn move_selection_up_with_size(&mut self, page_size: usize) {
+        self.current_list_mut().move_up(page_size);
     }
 
     pub fn move_selection_down_with_size(&mut self, page_size: usize) {
-        match self.screen {
-            Screen::Projects => {
-                let current_selection = self.projects_list_state.selected().unwrap_or(0);
-                let max_index = self.projects.len().saturating_sub(1);
-                if current_selection < max_index {
-                    self.projects_list_state.select(Some(current_selection + 1));
-                    self.scroll_to_selected_with_size(page_size);
-                }
-            }
-            Screen::Chats => {
-                let current_selection = self.chats_list_state.selected().unwrap_or(0);
-                let max_index = self.chats.len().saturating_sub(1);
-                if current_selection < max_index {
-                    self.chats_list_state.select(Some(current_selection + 1));
-                    self.scroll_to_selected_with_size(page_size);
-                }
-            }
-            Screen::Messages => {
-                let current_selection = self.messages_list_state.selected().unwrap_or(0);
-                let max_index = self.messages.len().saturating_sub(1);
-                if current_selection < max_index {
-                    self.messages_list_state.select(Some(current_selection + 1));
-                    self.scroll_to_selected_with_size(page_size);
-                }
-            }
-        }
+        self.current_list_mut().move_down(page_size);
     }
 
     pub fn page_up(&mut self, page_size: usize) {
-        match self.screen {
-            Screen::Projects => {
-                let current_selection = self.projects_list_state.selected().unwrap_or(0);
-                let current_offset = self.projects_list_state.offset();
-                let new_offset = current_offset.saturating_sub(page_size);
-                let selection_offset = current_selection.saturating_sub(current_offset);
-                let new_selection =
-                    (new_offset + selection_offset).min(self.projects.len().saturating_sub(1));
-
-                // Set offset directly
-                *self.projects_list_state.offset_mut() = new_offset;
-                self.projects_list_state.select(Some(new_selection));
-            }
-            Screen::Chats => {
-                let current_selection = self.chats_list_state.selected().unwrap_or(0);
-                let current_offset = self.chats_list_state.offset();
-                let new_offset = current_offset.saturating_sub(page_size);
-                let selection_offset = current_selection.saturating_sub(current_offset);
-                let new_selection =
-                    (new_offset + selection_offset).min(self.chats.len().saturating_sub(1));
-
-                *self.chats_list_state.offset_mut() = new_offset;
-                self.chats_list_state.select(Some(new_selection));
-            }
-            Screen::Messages => {
-                let current_selection = self.messages_list_state.selected().unwrap_or(0);
-                let current_offset = self.messages_list_state.offset();
-                let new_offset = current_offset.saturating_sub(page_size);
-                let selection_offset = current_selection.saturating_sub(current_offset);
-                let new_selection =
-                    (new_offset + selection_offset).min(self.messages.len().saturating_sub(1));
-
-                *self.messages_list_state.offset_mut() = new_offset;
-                self.messages_list_state.select(Some(new_selection));
-            }
-        }
+        self.current_list_mut().page_up(page_size);
     }
 
     pub fn page_down(&mut self, page_size: usize) {
-        match self.screen {
-            Screen::Projects => {
-                let current_selection = self.projects_list_state.selected().unwrap_or(0);
-                let current_offset = self.projects_list_state.offset();
-                let max_offset = self.projects.len().saturating_sub(page_size);
-                let new_offset = (current_offset + page_size).min(max_offset);
-                let selection_offset = current_selection.saturating_sub(current_offset);
-                let new_selection =
-                    (new_offset + selection_offset).min(self.projects.len().saturating_sub(1));
-
-                *self.projects_list_state.offset_mut() = new_offset;
-                self.projects_list_state.select(Some(new_selection));
-            }
-            Screen::Chats => {
-                let current_selection = self.chats_list_state.selected().unwrap_or(0);
-                let current_offset = self.chats_list_state.offset();
-                let max_offset = self.chats.len().saturating_sub(page_size);
-                let new_offset = (current_offset + page_size).min(max_offset);
-                let selection_offset = current_selection.saturating_sub(current_offset);
-                let new_selection =
-                    (new_offset + selection_offset).min(self.chats.len().saturating_sub(1));
-
-                *self.chats_list_state.offset_mut() = new_offset;
-                self.chats_list_state.select(Some(new_selection));
-            }
-            Screen::Messages => {
-                let current_selection = self.messages_list_state.selected().unwrap_or(0);
-                let current_offset = self.messages_list_state.offset();
-                let max_offset = self.messages.len().saturating_sub(page_size);
-                let new_offset = (current_offset + page_size).min(max_offset);
-                let selection_offset = current_selection.saturating_sub(current_offset);
-                let new_selection =
-                    (new_offset + selection_offset).min(self.messages.len().saturating_sub(1));
-
-                *self.messages_list_state.offset_mut() = new_offset;
-                self.messages_list_state.select(Some(new_selection));
-            }
-        }
-    }
-
-    fn scroll_to_selected_with_size(&mut self, visible_area: usize) {
-        match self.screen {
-            Screen::Projects => {
-                if let Some(selected) = self.projects_list_state.selected() {
-                    let offset = self.projects_list_state.offset();
-                    // visible_area parameter is passed in
-
-                    if selected < offset {
-                        *self.projects_list_state.offset_mut() = selected;
-                    } else if selected >= offset + visible_area {
-                        *self.projects_list_state.offset_mut() =
-                            selected.saturating_sub(visible_area - 1);
-                    }
-                }
-            }
-            Screen::Chats => {
-                if let Some(selected) = self.chats_list_state.selected() {
-                    let offset = self.chats_list_state.offset();
-                    // visible_area parameter is passed in
-
-                    if selected < offset {
-                        *self.chats_list_state.offset_mut() = selected;
-                    } else if selected >= offset + visible_area {
-                        *self.chats_list_state.offset_mut() =
-                            selected.saturating_sub(visible_area - 1);
-                    }
-                }
-            }
-            Screen::Messages => {
-                if let Some(selected) = self.messages_list_state.selected() {
-                    let offset = self.messages_list_state.offset();
-                    // visible_area parameter is passed in
-
-                    if selected < offset {
-                        *self.messages_list_state.offset_mut() = selected;
-                    } else if selected >= offset + visible_area {
-                        *self.messages_list_state.offset_mut() =
-                            selected.saturating_sub(visible_area - 1);
-                    }
-                }
-            }
-        }
+        self.current_list_mut().page_down(page_size);
     }
 
     pub fn go_to_top(&mut self) {
-        match self.screen {
-            Screen::Projects => {
-                if !self.projects.is_empty() {
-                    self.projects_list_state.select(Some(0));
-                    *self.projects_list_state.offset_mut() = 0;
-                }
-            }
-            Screen::Chats => {
-                if !self.chats.is_empty() {
-                    self.chats_list_state.select(Some(0));
-                    *self.chats_list_state.offset_mut() = 0;
-                }
-            }
-            Screen::Messages => {
-                if !self.messages.is_empty() {
-                    self.messages_list_state.select(Some(0));
-                    *self.messages_list_state.offset_mut() = 0;
-                }
-            }
-        }
+        self.current_list_mut().go_to_top();
     }
 
     pub fn go_to_bottom(&mut self) {
-        match self.screen {
-            Screen::Projects => {
-                if !self.projects.is_empty() {
-                    let last_index = self.projects.len() - 1;
-                    self.projects_list_state.select(Some(last_index));
-                }
-            }
-            Screen::Chats => {
-                if !self.chats.is_empty() {
-                    let last_index = self.chats.len() - 1;
-                    self.chats_list_state.select(Some(last_index));
-                }
-            }
-            Screen::Messages => {
-                if !self.messages.is_empty() {
-                    let last_index = self.messages.len() - 1;
-                    self.messages_list_state.select(Some(last_index));
-                }
-            }
-        }
+        self.current_list_mut().go_to_bottom();
     }
 
     pub fn select_middle_of_screen(&mut self, page_size: usize) {
-        match self.screen {
-            Screen::Projects => {
-                if !self.projects.is_empty() {
-                    let offset = self.projects_list_state.offset();
-                    let middle_index = (offset + page_size / 2).min(self.projects.len() - 1);
-                    self.projects_list_state.select(Some(middle_index));
-                }
-            }
-            Screen::Chats => {
-                if !self.chats.is_empty() {
-                    let offset = self.chats_list_state.offset();
-                    let middle_index = (offset + page_size / 2).min(self.chats.len() - 1);
-                    self.chats_list_state.select(Some(middle_index));
-                }
-            }
-            Screen::Messages => {
-                if !self.messages.is_empty() {
-                    let offset = self.messages_list_state.offset();
-                    let middle_index = (offset + page_size / 2).min(self.messages.len() - 1);
-                    self.messages_list_state.select(Some(middle_index));
-                }
-            }
-        }
+        self.current_list_mut().select_middle_of_screen(page_size);
     }
 
     pub fn select_top_of_screen(&mut self) {
-        match self.screen {
-            Screen::Projects => {
-                if !self.projects.is_empty() {
-                    let offset = self.projects_list_state.offset();
-                    let top_index = offset.min(self.projects.len() - 1);
-                    self.projects_list_state.select(Some(top_index));
-                }
-            }
-            Screen::Chats => {
-                if !self.chats.is_empty() {
-                    let offset = self.chats_list_state.offset();
-                    let top_index = offset.min(self.chats.len() - 1);
-                    self.chats_list_state.select(Some(top_index));
-                }
-            }
-            Screen::Messages => {
-                if !self.messages.is_empty() {
-                    let offset = self.messages_list_state.offset();
-                    let top_index = offset.min(self.messages.len() - 1);
-                    self.messages_list_state.select(Some(top_index));
-                }
-            }
-        }
+        self.current_list_mut().select_top_of_screen();
     }
 
     pub fn select_bottom_of_screen(&mut self, page_size: usize) {
-        match self.screen {
-            Screen::Projects => {
-                if !self.projects.is_empty() {
-                    let offset = self.projects_list_state.offset();
-                    let bottom_index = (offset + page_size - 1).min(self.projects.len() - 1);
-                    self.projects_list_state.select(Some(bottom_index));
-                }
-            }
-            Screen::Chats => {
-                if !self.chats.is_empty() {
-                    let offset = self.chats_list_state.offset();
-                    let bottom_index = (offset + page_size - 1).min(self.chats.len() - 1);
-                    self.chats_list_state.select(Some(bottom_index));
-                }
-            }
-            Screen::Messages => {
-                if !self.messages.is_empty() {
-                    let offset = self.messages_list_state.offset();
-                    let bottom_index = (offset + page_size - 1).min(self.messages.len() - 1);
-                    self.messages_list_state.select(Some(bottom_index));
-                }
-            }
-        }
+        self.current_list_mut().select_bottom_of_screen(page_size);
     }
 }
