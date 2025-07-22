@@ -15,7 +15,6 @@ pub fn handle_events(app: &mut App) -> io::Result<()> {
 
 fn handle_key_event(app: &mut App, key: KeyEvent) {
     match key.code {
-        KeyCode::Char('q') | KeyCode::Esc => app.quit(),
         KeyCode::Char('c')
             if key
                 .modifiers
@@ -23,8 +22,14 @@ fn handle_key_event(app: &mut App, key: KeyEvent) {
         {
             app.quit()
         }
+        KeyCode::Char('q') | KeyCode::Esc => app.go_back(),
         KeyCode::Up | KeyCode::Char('k') => app.move_selection_up(),
         KeyCode::Down | KeyCode::Char('j') => app.move_selection_down(),
+        KeyCode::Enter => {
+            if let Err(e) = app.open_project() {
+                eprintln!("Error opening project: {}", e);
+            }
+        }
         _ => {}
     }
 }

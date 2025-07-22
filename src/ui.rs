@@ -10,6 +10,7 @@ use ratatui::{
 pub fn render(f: &mut Frame, app: &App) {
     match app.screen {
         Screen::Projects => render_projects(f, app),
+        Screen::Chats => render_chats(f, app),
     }
 }
 
@@ -67,6 +68,72 @@ fn render_projects(f: &mut Frame, app: &App) {
         "No projects found"
     } else {
         "Project list"
+    };
+
+    let status =
+        Paragraph::new(status_text).style(Style::default().fg(Color::White).bg(Color::Blue));
+    f.render_widget(status, chunks[1]);
+}
+
+fn render_chats(f: &mut Frame, app: &App) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(1)])
+        .split(f.area());
+
+    let chats: Vec<ListItem> = app
+        .chats
+        .iter()
+        .map(|chat| {
+            let date_str = chat.last_modified.format("%Y-%m-%d %H:%M").to_string();
+            let content = format!(
+                "{:<30} {:<20} {:>8}",
+                truncate_string(&chat.name, 30),
+                date_str,
+                chat.message_count
+            );
+            ListItem::new(Line::from(vec![Span::raw(content)]))
+        })
+        .collect();
+
+    let project_name = app
+        .selected_project()
+        .map(|p| p.name.as_str())
+        .unwrap_or("Unknown");
+
+    let list = List::new(chats)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!("Chats in {}", project_name))
+                .title_bottom(Line::from(vec![
+                    Span::raw("Use "),
+                    Span::styled("↑↓/jk", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to navigate, "),
+                    Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to select, "),
+                    Span::styled("Esc/q", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to go back"),
+                ])),
+        )
+        .highlight_style(
+            Style::default()
+                .bg(Color::LightBlue)
+                .fg(Color::Black)
+                .add_modifier(Modifier::BOLD),
+        );
+
+    let mut list_state = ListState::default();
+    if !app.chats.is_empty() {
+        list_state.select(Some(app.selected_chat_index));
+    }
+
+    f.render_stateful_widget(list, chunks[0], &mut list_state);
+
+    let status_text = if app.chats.is_empty() {
+        "No chats found"
+    } else {
+        &format!("{} > Chat list", project_name)
     };
 
     let status =

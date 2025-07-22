@@ -7,24 +7,6 @@ the history of a chat.
 
 ## Tasks
 
-- Implement project selection, chats screen:
-  - Show the currently selected project in the list (highlight it). Start with
-    the first project in the list.
-  - Allow moving selection up and down using arrow keys and `j`/`k`.
-  - If the project list doesn't fit the screen, allow scrolling, when the user
-    gets to the bottom of the screen (and scrolling up when the user is at the
-    top of the screen).
-  - Allow opening selected project with `Enter`.
-  - When the project is opened, show the chats screen:
-    - It contains list of chats in the project.
-    - The chats are JSONL files in the project folder.
-    - For each chat, show:
-      - Name of the chat (file name without extension).
-      - Last modified date of the chat.
-      - Number of messages in the chat (count lines in the file).
-    - Sort the list by last modified date.
-  - The user can exit the chats screen with `Esc` or `q`.
-  - Use the List widget from Ratatui to display the list of projects.
 - Implement chat selection in the chats screen, start messages screen:
   - Show the currently selected chat in the list (highlight it). Start with
     the first chat in the list.
