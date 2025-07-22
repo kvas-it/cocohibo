@@ -291,4 +291,128 @@ impl App {
             }
         }
     }
+
+    pub fn go_to_top(&mut self) {
+        match self.screen {
+            Screen::Projects => {
+                if !self.projects.is_empty() {
+                    self.projects_list_state.select(Some(0));
+                    *self.projects_list_state.offset_mut() = 0;
+                }
+            }
+            Screen::Chats => {
+                if !self.chats.is_empty() {
+                    self.chats_list_state.select(Some(0));
+                    *self.chats_list_state.offset_mut() = 0;
+                }
+            }
+            Screen::Messages => {
+                if !self.messages.is_empty() {
+                    self.messages_list_state.select(Some(0));
+                    *self.messages_list_state.offset_mut() = 0;
+                }
+            }
+        }
+    }
+
+    pub fn go_to_bottom(&mut self) {
+        match self.screen {
+            Screen::Projects => {
+                if !self.projects.is_empty() {
+                    let last_index = self.projects.len() - 1;
+                    self.projects_list_state.select(Some(last_index));
+                }
+            }
+            Screen::Chats => {
+                if !self.chats.is_empty() {
+                    let last_index = self.chats.len() - 1;
+                    self.chats_list_state.select(Some(last_index));
+                }
+            }
+            Screen::Messages => {
+                if !self.messages.is_empty() {
+                    let last_index = self.messages.len() - 1;
+                    self.messages_list_state.select(Some(last_index));
+                }
+            }
+        }
+    }
+
+    pub fn select_middle_of_screen(&mut self, page_size: usize) {
+        match self.screen {
+            Screen::Projects => {
+                if !self.projects.is_empty() {
+                    let offset = self.projects_list_state.offset();
+                    let middle_index = (offset + page_size / 2).min(self.projects.len() - 1);
+                    self.projects_list_state.select(Some(middle_index));
+                }
+            }
+            Screen::Chats => {
+                if !self.chats.is_empty() {
+                    let offset = self.chats_list_state.offset();
+                    let middle_index = (offset + page_size / 2).min(self.chats.len() - 1);
+                    self.chats_list_state.select(Some(middle_index));
+                }
+            }
+            Screen::Messages => {
+                if !self.messages.is_empty() {
+                    let offset = self.messages_list_state.offset();
+                    let middle_index = (offset + page_size / 2).min(self.messages.len() - 1);
+                    self.messages_list_state.select(Some(middle_index));
+                }
+            }
+        }
+    }
+
+    pub fn select_top_of_screen(&mut self) {
+        match self.screen {
+            Screen::Projects => {
+                if !self.projects.is_empty() {
+                    let offset = self.projects_list_state.offset();
+                    let top_index = offset.min(self.projects.len() - 1);
+                    self.projects_list_state.select(Some(top_index));
+                }
+            }
+            Screen::Chats => {
+                if !self.chats.is_empty() {
+                    let offset = self.chats_list_state.offset();
+                    let top_index = offset.min(self.chats.len() - 1);
+                    self.chats_list_state.select(Some(top_index));
+                }
+            }
+            Screen::Messages => {
+                if !self.messages.is_empty() {
+                    let offset = self.messages_list_state.offset();
+                    let top_index = offset.min(self.messages.len() - 1);
+                    self.messages_list_state.select(Some(top_index));
+                }
+            }
+        }
+    }
+
+    pub fn select_bottom_of_screen(&mut self, page_size: usize) {
+        match self.screen {
+            Screen::Projects => {
+                if !self.projects.is_empty() {
+                    let offset = self.projects_list_state.offset();
+                    let bottom_index = (offset + page_size - 1).min(self.projects.len() - 1);
+                    self.projects_list_state.select(Some(bottom_index));
+                }
+            }
+            Screen::Chats => {
+                if !self.chats.is_empty() {
+                    let offset = self.chats_list_state.offset();
+                    let bottom_index = (offset + page_size - 1).min(self.chats.len() - 1);
+                    self.chats_list_state.select(Some(bottom_index));
+                }
+            }
+            Screen::Messages => {
+                if !self.messages.is_empty() {
+                    let offset = self.messages_list_state.offset();
+                    let bottom_index = (offset + page_size - 1).min(self.messages.len() - 1);
+                    self.messages_list_state.select(Some(bottom_index));
+                }
+            }
+        }
+    }
 }

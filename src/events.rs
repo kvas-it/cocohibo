@@ -42,6 +42,11 @@ fn handle_key_event(app: &mut App, key: KeyEvent, terminal_area: Rect) {
                 eprintln!("Error opening: {}", e);
             }
         }
+        KeyCode::Char('g') => app.go_to_top(),
+        KeyCode::Char('G') => app.go_to_bottom(),
+        KeyCode::Char('z') => app.select_middle_of_screen(page_size),
+        KeyCode::Char('t') => app.select_top_of_screen(),
+        KeyCode::Char('b') => app.select_bottom_of_screen(page_size),
         _ => {}
     }
 }
