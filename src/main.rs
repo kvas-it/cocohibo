@@ -13,13 +13,18 @@ use std::{env, io, path::PathBuf};
 struct Cli {
     #[arg(long, help = "Directory containing Claude Code projects")]
     projects_dir: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Use vertical split (up/down) instead of horizontal split"
+    )]
+    vertical_split: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
     let projects_dir = get_projects_dir(cli.projects_dir);
 
-    let mut app = App::new(projects_dir);
+    let mut app = App::new(projects_dir, cli.vertical_split);
 
     if let Err(e) = app.load_projects() {
         eprintln!("Error loading projects: {}", e);

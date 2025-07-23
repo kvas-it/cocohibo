@@ -7,16 +7,10 @@ the history of a chat.
 
 ## Tasks
 
-- Customize the directory from where the projects are loaded:
-  - Default to `~/.claude/projects`.
-  - Allow specifying a different directory using the `--projects-dir` command line
-    argument.
-  - Allow specifying a different directory using the `COCOHIBO_PROJECTS_DIR`
-    environment variable.
-  - If the directory does not exist, show an error message and exit.
-- Vertical split option:
-  - Add a command line argument `--vertical-split` to use vertical split
-    (up/down instead of left/right) in the messages list / detail view.
+- Adjust navigation between views:
+  - Add `l` to enter the view (synonim for `Enter`).
+  - Add `h` to go back to the previous view (synonim for `Esc`).
+  - Make `q` quit the application (synonim for `Ctrl+C`).
 - Implement a search feature:
   - In all views pressing / switches to search mode.
   - In search mode all letters, numbers, and symbols are added to the current

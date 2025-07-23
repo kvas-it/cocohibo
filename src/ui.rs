@@ -185,15 +185,20 @@ fn render_messages(f: &mut Frame, app: &mut App) {
         .split(f.area());
 
     // Split the main content area into two panes: list and details
+    let direction = if app.vertical_split {
+        Direction::Vertical
+    } else {
+        Direction::Horizontal
+    };
     let content_chunks = Layout::default()
-        .direction(Direction::Horizontal)
+        .direction(direction)
         .constraints([Constraint::Min(30), Constraint::Min(30)])
         .split(main_chunks[0]);
 
-    // Render message list in left pane
+    // Render message list in first pane (left or top)
     render_message_list(f, app, content_chunks[0]);
 
-    // Render message details in right pane
+    // Render message details in second pane (right or bottom)
     render_message_details(f, app, content_chunks[1]);
 
     // Render status line
@@ -301,6 +306,8 @@ fn render_message_list(f: &mut Frame, app: &mut App, area: ratatui::layout::Rect
                     Span::raw(" navigate, "),
                     Span::styled("J/K", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" initial msgs, "),
+                    Span::styled("s", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" toggle split, "),
                     Span::styled("Esc/q", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" back"),
                 ])),

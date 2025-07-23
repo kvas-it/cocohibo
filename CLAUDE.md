@@ -21,3 +21,8 @@ history of a chat.
 - The main entry point is the `cocohibo` command (shorthand: `cch`).
 - Use `serde_jsonlines` to read and write JSONL files.
 - Use `chrono` for date and time handling.
+
+## Test data
+
+There is a test data in `tests` directory. It contains a couple of generated
+projects with some chats and messages. You can use it to test the application.

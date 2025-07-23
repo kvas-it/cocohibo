@@ -49,6 +49,11 @@ fn handle_key_event(app: &mut App, key: KeyEvent, terminal_area: Rect) {
         KeyCode::Char('b') => app.select_bottom_of_screen(page_size),
         KeyCode::Char('J') => app.go_to_next_initial_message(),
         KeyCode::Char('K') => app.go_to_previous_initial_message(),
+        KeyCode::Char('s') => {
+            if matches!(app.screen, crate::app::Screen::Messages) {
+                app.toggle_split();
+            }
+        }
         _ => {}
     }
 }

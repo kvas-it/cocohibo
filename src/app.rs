@@ -205,17 +205,19 @@ pub struct App {
     pub chats: ListManager<Chat>,
     pub messages: ListManager<HierarchicalMessage>,
     pub projects_dir: PathBuf,
+    pub vertical_split: bool,
     pub should_quit: bool,
 }
 
 impl App {
-    pub fn new(projects_dir: PathBuf) -> Self {
+    pub fn new(projects_dir: PathBuf, vertical_split: bool) -> Self {
         Self {
             screen: Screen::Projects,
             projects: ListManager::new(),
             chats: ListManager::new(),
             messages: ListManager::new(),
             projects_dir,
+            vertical_split,
             should_quit: false,
         }
     }
@@ -374,5 +376,9 @@ impl App {
                 return;
             }
         }
+    }
+
+    pub fn toggle_split(&mut self) {
+        self.vertical_split = !self.vertical_split;
     }
 }
