@@ -91,20 +91,17 @@ By default, Cocohibo looks for Claude Code projects in `~/.claude/projects`. You
 #### List Navigation
 - **PgUp/PgDn**: Page up/down
 - **Space**: Page down (Shift+Space for page up)
-- **g**: Go to top of list
-- **G**: Go to bottom of list
-- **z**: Select middle of screen
-- **t**: Select top of screen
-- **b**: Select bottom of screen
+- **g**: Go to the first item
+- **G**: Go to the last item
+- **z**: Scroll the screen so that selected item is in the middle
+- **t**: Scroll the screen so that selected item is at the top
+- **b**: Scroll the screen so that selected item is at the bottom
+- **/**: Enter search mode (type to search, press Enter to select, Esc to cancel)
 
 #### Messages View Only
 - **J**: Jump to next initial message
 - **K**: Jump to previous initial message
 - **s**: Toggle between horizontal and vertical split layout
-
-#### Layout Options
-- **Default**: Horizontal split (message list left, details right)
-- **Vertical split**: Message list top, details bottom (use `--vertical-split` flag or press `s`)
 
 ## Architecture
 
