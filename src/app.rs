@@ -1,6 +1,7 @@
 use crate::project::{Chat, HierarchicalMessage, Project};
 use ratatui::widgets::ListState;
 use std::path::PathBuf;
+use sublime_fuzzy::best_match;
 
 pub trait ListManagerTrait {
     fn move_up(&mut self, page_size: usize);
@@ -549,24 +550,98 @@ impl App {
             return;
         }
 
-        let query = self.search_query.to_lowercase();
+        let query = self.search_query.clone();
         match self.screen {
             Screen::Projects => {
-                self.projects.apply_filter_with_selection_preservation(
-                    |project| project.name.to_lowercase().contains(&query),
-                    preserve_selection,
-                );
+                self.projects
+                    .apply_fuzzy_filter_with_selection_preservation(
+                        |project| &project.name,
+                        &query,
+                        preserve_selection,
+                    );
             }
             Screen::Chats => {
-                self.chats.apply_filter_with_selection_preservation(
-                    |chat| chat.name.to_lowercase().contains(&query),
+                self.chats.apply_fuzzy_filter_with_selection_preservation(
+                    |chat| &chat.name,
+                    &query,
                     preserve_selection,
                 );
             }
             Screen::Messages => {
-                self.apply_message_filter(&query);
+                self.apply_fuzzy_message_filter(&query);
             }
         }
+    }
+
+    pub fn apply_fuzzy_message_filter(&mut self, query: &str) {
+        // Remember the currently selected original index
+        let current_original_index = self
+            .messages
+            .selected()
+            .map(|filtered_idx| self.messages.original_index(filtered_idx));
+
+        // Create a vector of (message, original_index, score) for items that match
+        let mut matches: Vec<(HierarchicalMessage, usize, isize)> = Vec::new();
+
+        for (original_index, message) in self.messages.items.iter().enumerate() {
+            let message_number = (original_index + 1).to_string();
+            let content_text = message.message.get_content_text();
+
+            // Try fuzzy matching against both message number and content
+            let number_match = best_match(query, &message_number);
+            let content_match = best_match(query, &content_text);
+
+            // Take the best score from either match
+            let best_score = match (number_match, content_match) {
+                (Some(n), Some(c)) => Some(n.score().max(c.score())),
+                (Some(n), None) => Some(n.score()),
+                (None, Some(c)) => Some(c.score()),
+                (None, None) => None,
+            };
+
+            if let Some(score) = best_score {
+                matches.push((message.clone(), original_index, score));
+            }
+        }
+
+        // Sort by score (descending - higher scores are better)
+        matches.sort_by(|a, b| b.2.cmp(&a.2));
+
+        // Extract the sorted items and indices
+        self.messages.filtered_items = matches.iter().map(|(item, _, _)| item.clone()).collect();
+        self.messages.filtered_indices = matches.iter().map(|(_, idx, _)| *idx).collect();
+
+        // Try to preserve selection
+        let new_selection = if !self.messages.filtered_items.is_empty() {
+            if let Some(original_idx) = current_original_index {
+                // Check if the originally selected item is still in the filtered results
+                if let Some(new_filtered_idx) =
+                    self.messages.find_original_index_in_filtered(original_idx)
+                {
+                    Some(new_filtered_idx)
+                } else {
+                    // Find the previous item that matches (largest original index < current)
+                    let mut best_previous = None;
+                    for (filtered_idx, &filtered_original_idx) in
+                        self.messages.filtered_indices.iter().enumerate()
+                    {
+                        if filtered_original_idx < original_idx {
+                            best_previous = Some(filtered_idx);
+                        } else {
+                            break; // Since filtered_indices is ordered, we can stop here
+                        }
+                    }
+                    best_previous.or(Some(0)) // Fall back to first item if no previous
+                }
+            } else {
+                Some(0) // No previous selection, select first
+            }
+        } else {
+            None // No items to select
+        };
+
+        self.messages.state.select(new_selection);
+        *self.messages.state.offset_mut() = 0;
     }
 
     pub fn apply_message_filter(&mut self, query: &str) {
@@ -660,6 +735,79 @@ impl<T: Clone> ListManager<T> {
         F: Fn(&T) -> bool,
     {
         self.apply_filter_with_selection_preservation(predicate, true);
+    }
+
+    pub fn apply_fuzzy_filter<F>(&mut self, text_extractor: F, query: &str)
+    where
+        F: Fn(&T) -> &str,
+    {
+        self.apply_fuzzy_filter_with_selection_preservation(text_extractor, query, true);
+    }
+
+    pub fn apply_fuzzy_filter_with_selection_preservation<F>(
+        &mut self,
+        text_extractor: F,
+        query: &str,
+        preserve_selection: bool,
+    ) where
+        F: Fn(&T) -> &str,
+    {
+        // Remember the currently selected original index
+        let current_original_index = if preserve_selection {
+            self.selected()
+                .map(|filtered_idx| self.original_index(filtered_idx))
+        } else {
+            None
+        };
+
+        // Create a vector of (item, original_index, score) for items that match
+        let mut matches: Vec<(T, usize, isize)> = Vec::new();
+
+        for (original_index, item) in self.items.iter().enumerate() {
+            let text = text_extractor(item);
+            if let Some(result) = best_match(query, text) {
+                matches.push((item.clone(), original_index, result.score()));
+            }
+        }
+
+        // Sort by score (descending - higher scores are better)
+        matches.sort_by(|a, b| b.2.cmp(&a.2));
+
+        // Extract the sorted items and indices
+        self.filtered_items = matches.iter().map(|(item, _, _)| item.clone()).collect();
+        self.filtered_indices = matches.iter().map(|(_, idx, _)| *idx).collect();
+
+        // Try to preserve selection
+        let new_selection = if preserve_selection && !self.filtered_items.is_empty() {
+            if let Some(original_idx) = current_original_index {
+                // Check if the originally selected item is still in the filtered results
+                if let Some(new_filtered_idx) = self.find_original_index_in_filtered(original_idx) {
+                    Some(new_filtered_idx)
+                } else {
+                    // Find the previous item that matches (largest original index < current)
+                    let mut best_previous = None;
+                    for (filtered_idx, &filtered_original_idx) in
+                        self.filtered_indices.iter().enumerate()
+                    {
+                        if filtered_original_idx < original_idx {
+                            best_previous = Some(filtered_idx);
+                        } else {
+                            break; // Since filtered_indices is ordered, we can stop here
+                        }
+                    }
+                    best_previous.or(Some(0)) // Fall back to first item if no previous
+                }
+            } else {
+                Some(0) // No previous selection, select first
+            }
+        } else if !self.filtered_items.is_empty() {
+            Some(0) // Default behavior: select first item
+        } else {
+            None // No items to select
+        };
+
+        self.state.select(new_selection);
+        *self.state.offset_mut() = 0;
     }
 
     pub fn apply_filter_with_selection_preservation<F>(

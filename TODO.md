@@ -7,6 +7,4 @@ the history of a chat.
 
 ## Tasks
 
-- Make list search fuzzy:
-  - Instead of exact substring match, use fuzzy matching, similar to how
-    `fzf` works.
+Nothing planned.
