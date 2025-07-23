@@ -1,3 +1,4 @@
+use clap::Parser;
 use cocohibo::{app::App, events, ui};
 use crossterm::{
     execute,
@@ -6,8 +7,17 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, layout::Rect, Terminal};
 use std::{env, io, path::PathBuf};
 
+#[derive(Parser)]
+#[command(name = "cocohibo")]
+#[command(about = "A browser for Claude Code history")]
+struct Cli {
+    #[arg(long, help = "Directory containing Claude Code projects")]
+    projects_dir: Option<PathBuf>,
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let projects_dir = get_projects_dir();
+    let cli = Cli::parse();
+    let projects_dir = get_projects_dir(cli.projects_dir);
 
     let mut app = App::new(projects_dir);
 
@@ -28,7 +38,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn get_projects_dir() -> PathBuf {
+fn get_projects_dir(cli_projects_dir: Option<PathBuf>) -> PathBuf {
+    if let Some(projects_dir) = cli_projects_dir {
+        return projects_dir;
+    }
+
     if let Ok(custom_dir) = env::var("COCOHIBO_PROJECTS_DIR") {
         return PathBuf::from(custom_dir);
     }
