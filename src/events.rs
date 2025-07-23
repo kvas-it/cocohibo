@@ -18,9 +18,29 @@ fn handle_key_event(app: &mut App, key: KeyEvent, terminal_area: Rect) {
     // Calculate page size: terminal height - status bar (1) - borders (2)
     let page_size = (terminal_area.height as usize).saturating_sub(3).max(1);
 
+    if app.search_mode {
+        handle_search_mode_key(app, key);
+    } else {
+        handle_normal_mode_key(app, key, page_size);
+    }
+}
+
+fn handle_search_mode_key(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => app.quit(),
+        KeyCode::Esc => app.exit_search_mode(),
+        KeyCode::Enter => app.exit_search_mode_keep_filter(),
+        KeyCode::Backspace => app.remove_from_search_query(),
+        KeyCode::Char(c) => app.add_to_search_query(c),
+        _ => {}
+    }
+}
+
+fn handle_normal_mode_key(app: &mut App, key: KeyEvent, page_size: usize) {
     match key.code {
         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => app.quit(),
         KeyCode::Char('q') => app.quit(),
+        KeyCode::Char('/') => app.enter_search_mode(),
         KeyCode::Esc | KeyCode::Char('h') => app.go_back(),
         KeyCode::Up | KeyCode::Char('k') => app.move_selection_up_with_size(page_size),
         KeyCode::Down | KeyCode::Char('j') => app.move_selection_down_with_size(page_size),

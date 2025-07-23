@@ -15,14 +15,14 @@ mod tests {
 
     #[test]
     fn test_go_to_top_empty_lists() {
-        let mut app = App::new(PathBuf::from("/tmp"));
+        let mut app = App::new(PathBuf::from("/tmp"), false);
         app.go_to_top();
         assert_eq!(app.projects.selected(), None);
     }
 
     #[test]
     fn test_go_to_top_projects() {
-        let mut app = App::new(PathBuf::from("/tmp"));
+        let mut app = App::new(PathBuf::from("/tmp"), false);
         app.projects.items = vec![
             super::project::Project {
                 name: "project1".to_string(),
@@ -51,7 +51,7 @@ mod tests {
 
     #[test]
     fn test_go_to_bottom_projects() {
-        let mut app = App::new(PathBuf::from("/tmp"));
+        let mut app = App::new(PathBuf::from("/tmp"), false);
         app.projects.items = vec![
             super::project::Project {
                 name: "project1".to_string(),
@@ -78,7 +78,7 @@ mod tests {
 
     #[test]
     fn test_select_middle_of_screen() {
-        let mut app = App::new(PathBuf::from("/tmp"));
+        let mut app = App::new(PathBuf::from("/tmp"), false);
         app.projects.items = (0..10)
             .map(|i| super::project::Project {
                 name: format!("project{}", i),
@@ -97,7 +97,7 @@ mod tests {
 
     #[test]
     fn test_select_top_of_screen() {
-        let mut app = App::new(PathBuf::from("/tmp"));
+        let mut app = App::new(PathBuf::from("/tmp"), false);
         app.projects.items = (0..10)
             .map(|i| super::project::Project {
                 name: format!("project{}", i),
@@ -116,7 +116,7 @@ mod tests {
 
     #[test]
     fn test_select_bottom_of_screen() {
-        let mut app = App::new(PathBuf::from("/tmp"));
+        let mut app = App::new(PathBuf::from("/tmp"), false);
         app.projects.items = (0..10)
             .map(|i| super::project::Project {
                 name: format!("project{}", i),
@@ -135,7 +135,7 @@ mod tests {
 
     #[test]
     fn test_initial_message_navigation() {
-        let mut app = App::new(PathBuf::from("/tmp"));
+        let mut app = App::new(PathBuf::from("/tmp"), false);
         app.screen = super::app::Screen::Messages;
 
         // Create test messages with mixed initial and non-initial messages
@@ -324,5 +324,483 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_navigate_with_filtering() {
+        let mut app = App::new(PathBuf::from("tests/sample-projects"), false);
+
+        // Load test projects
+        if app.load_projects().is_ok() {
+            assert!(!app.projects.is_empty());
+
+            // Select first project and open it
+            app.projects.select(Some(0));
+            if let Ok(_) = app.open_project() {
+                assert_eq!(app.screen, super::app::Screen::Chats);
+                assert!(!app.chats.is_empty());
+
+                // Select first chat and try to open it
+                app.chats.select(Some(0));
+                let result = app.open_chat();
+
+                // This should succeed with test data
+                if let Err(ref e) = result {
+                    println!("Error opening chat: {:?}", e);
+                }
+                assert!(result.is_ok(), "Should be able to open chat with test data");
+                assert_eq!(app.screen, super::app::Screen::Messages);
+            }
+        }
+    }
+
+    #[test]
+    fn test_search_functionality() {
+        let mut app = App::new(PathBuf::from("/tmp"), false);
+
+        // Set up test projects
+        app.projects.items = vec![
+            super::project::Project {
+                name: "test-project".to_string(),
+                last_modified: chrono::Utc::now(),
+                chat_count: 1,
+            },
+            super::project::Project {
+                name: "another-project".to_string(),
+                last_modified: chrono::Utc::now(),
+                chat_count: 1,
+            },
+            super::project::Project {
+                name: "debug-session".to_string(),
+                last_modified: chrono::Utc::now(),
+                chat_count: 1,
+            },
+        ];
+
+        // Test initial state
+        assert!(!app.search_mode);
+        assert_eq!(app.search_query, "");
+        assert_eq!(app.projects.active_items().len(), 3);
+        assert!(!app.projects.is_filtered());
+
+        // Enter search mode
+        app.enter_search_mode();
+        assert!(app.search_mode);
+        assert_eq!(app.search_query, "");
+        assert_eq!(app.projects.active_items().len(), 3); // Empty query shows all
+
+        // Add search query
+        app.add_to_search_query('t');
+        app.add_to_search_query('e');
+        app.add_to_search_query('s');
+        app.add_to_search_query('t');
+        assert_eq!(app.search_query, "test");
+        assert_eq!(app.projects.active_items().len(), 1); // Only "test-project" matches
+        assert_eq!(app.projects.active_items()[0].name, "test-project");
+        assert!(app.projects.is_filtered());
+
+        // Remove from search query
+        app.remove_from_search_query();
+        assert_eq!(app.search_query, "tes");
+        assert_eq!(app.projects.active_items().len(), 1); // Still matches "test-project"
+
+        // Clear search query completely
+        app.remove_from_search_query();
+        app.remove_from_search_query();
+        app.remove_from_search_query();
+        assert_eq!(app.search_query, "");
+        assert_eq!(app.projects.active_items().len(), 3); // Shows all again
+
+        // Search for another pattern
+        app.add_to_search_query('d');
+        app.add_to_search_query('e');
+        app.add_to_search_query('b');
+        app.add_to_search_query('u');
+        app.add_to_search_query('g');
+        assert_eq!(app.search_query, "debug");
+        assert_eq!(app.projects.active_items().len(), 1); // Only "debug-session" matches
+        assert_eq!(app.projects.active_items()[0].name, "debug-session");
+
+        // Exit search mode (clear filter)
+        app.exit_search_mode();
+        assert!(!app.search_mode);
+        assert_eq!(app.search_query, "");
+        assert_eq!(app.projects.active_items().len(), 3); // Shows all
+        assert!(!app.projects.is_filtered());
+
+        // Test exit search mode keep filter
+        app.enter_search_mode();
+        app.add_to_search_query('a');
+        app.add_to_search_query('n');
+        app.add_to_search_query('o');
+        app.add_to_search_query('t');
+        app.add_to_search_query('h');
+        app.add_to_search_query('e');
+        app.add_to_search_query('r');
+        assert_eq!(app.search_query, "another");
+        assert_eq!(app.projects.active_items().len(), 1); // Only "another-project" matches
+
+        app.exit_search_mode_keep_filter();
+        assert!(!app.search_mode);
+        assert_eq!(app.search_query, "another");
+        assert_eq!(app.projects.active_items().len(), 1); // Filter still applied
+        assert!(app.projects.is_filtered());
+    }
+
+    #[test]
+    fn test_message_numbering_with_filtering() {
+        let mut app = App::new(PathBuf::from("/tmp"), false);
+        app.screen = super::app::Screen::Messages;
+
+        // Create test messages
+        app.messages.items = vec![
+            super::project::HierarchicalMessage::new(
+                super::project::Message {
+                    msg_type: "user".to_string(),
+                    message: None,
+                    timestamp: chrono::Utc::now(),
+                    uuid: "msg1".to_string(),
+                    parent_uuid: None,
+                    is_sidechain: None,
+                    session_id: None,
+                    role: None,
+                    content: Some(serde_json::Value::String("Hello world".to_string())),
+                    user_type: None,
+                    cwd: None,
+                    version: None,
+                    git_branch: None,
+                    is_meta: None,
+                    request_id: None,
+                    model: None,
+                    usage: None,
+                    stop_reason: None,
+                    stop_sequence: None,
+                },
+                true,
+                0,
+            ),
+            super::project::HierarchicalMessage::new(
+                super::project::Message {
+                    msg_type: "assistant".to_string(),
+                    message: None,
+                    timestamp: chrono::Utc::now(),
+                    uuid: "msg2".to_string(),
+                    parent_uuid: Some("msg1".to_string()),
+                    is_sidechain: None,
+                    session_id: None,
+                    role: None,
+                    content: Some(serde_json::Value::String("Hi there".to_string())),
+                    user_type: None,
+                    cwd: None,
+                    version: None,
+                    git_branch: None,
+                    is_meta: None,
+                    request_id: None,
+                    model: None,
+                    usage: None,
+                    stop_reason: None,
+                    stop_sequence: None,
+                },
+                false,
+                1,
+            ),
+            super::project::HierarchicalMessage::new(
+                super::project::Message {
+                    msg_type: "user".to_string(),
+                    message: None,
+                    timestamp: chrono::Utc::now(),
+                    uuid: "msg3".to_string(),
+                    parent_uuid: None,
+                    is_sidechain: None,
+                    session_id: None,
+                    role: None,
+                    content: Some(serde_json::Value::String("Another message".to_string())),
+                    user_type: None,
+                    cwd: None,
+                    version: None,
+                    git_branch: None,
+                    is_meta: None,
+                    request_id: None,
+                    model: None,
+                    usage: None,
+                    stop_reason: None,
+                    stop_sequence: None,
+                },
+                true,
+                0,
+            ),
+        ];
+
+        // Test original indexing without filtering
+        assert_eq!(app.messages.active_items().len(), 3);
+        assert_eq!(app.messages.original_index(0), 0);
+        assert_eq!(app.messages.original_index(1), 1);
+        assert_eq!(app.messages.original_index(2), 2);
+
+        // Apply search filter for "Hi" (should match message #2)
+        app.apply_message_filter("hi");
+        assert_eq!(app.messages.active_items().len(), 1);
+        assert_eq!(app.messages.original_index(0), 1); // Filtered position 0 maps to original position 1
+
+        // Search by message number "3" (should match message #3)
+        app.apply_message_filter("3");
+        assert_eq!(app.messages.active_items().len(), 1);
+        assert_eq!(app.messages.original_index(0), 2); // Filtered position 0 maps to original position 2
+
+        // Search for "message" (should only match message #3 which contains "Another message")
+        app.apply_message_filter("message");
+        assert_eq!(app.messages.active_items().len(), 1);
+        assert_eq!(app.messages.original_index(0), 2); // Filtered position 0 maps to original position 2
+
+        // Clear filter
+        app.messages.clear_filter();
+        assert_eq!(app.messages.active_items().len(), 3);
+        assert!(!app.messages.is_filtered());
+    }
+
+    #[test]
+    fn test_selection_preservation_during_filtering() {
+        let mut app = App::new(PathBuf::from("/tmp"), false);
+        app.screen = super::app::Screen::Messages;
+
+        // Create test messages
+        app.messages.items = vec![
+            super::project::HierarchicalMessage::new(
+                super::project::Message {
+                    msg_type: "user".to_string(),
+                    message: None,
+                    timestamp: chrono::Utc::now(),
+                    uuid: "msg1".to_string(),
+                    parent_uuid: None,
+                    is_sidechain: None,
+                    session_id: None,
+                    role: None,
+                    content: Some(serde_json::Value::String("First message".to_string())),
+                    user_type: None,
+                    cwd: None,
+                    version: None,
+                    git_branch: None,
+                    is_meta: None,
+                    request_id: None,
+                    model: None,
+                    usage: None,
+                    stop_reason: None,
+                    stop_sequence: None,
+                },
+                true,
+                0,
+            ),
+            super::project::HierarchicalMessage::new(
+                super::project::Message {
+                    msg_type: "assistant".to_string(),
+                    message: None,
+                    timestamp: chrono::Utc::now(),
+                    uuid: "msg2".to_string(),
+                    parent_uuid: Some("msg1".to_string()),
+                    is_sidechain: None,
+                    session_id: None,
+                    role: None,
+                    content: Some(serde_json::Value::String("Second message".to_string())),
+                    user_type: None,
+                    cwd: None,
+                    version: None,
+                    git_branch: None,
+                    is_meta: None,
+                    request_id: None,
+                    model: None,
+                    usage: None,
+                    stop_reason: None,
+                    stop_sequence: None,
+                },
+                false,
+                1,
+            ),
+            super::project::HierarchicalMessage::new(
+                super::project::Message {
+                    msg_type: "user".to_string(),
+                    message: None,
+                    timestamp: chrono::Utc::now(),
+                    uuid: "msg3".to_string(),
+                    parent_uuid: None,
+                    is_sidechain: None,
+                    session_id: None,
+                    role: None,
+                    content: Some(serde_json::Value::String("Third message".to_string())),
+                    user_type: None,
+                    cwd: None,
+                    version: None,
+                    git_branch: None,
+                    is_meta: None,
+                    request_id: None,
+                    model: None,
+                    usage: None,
+                    stop_reason: None,
+                    stop_sequence: None,
+                },
+                true,
+                0,
+            ),
+        ];
+
+        // Select the second message (index 1)
+        app.messages.select(Some(1));
+        assert_eq!(app.messages.selected(), Some(1));
+        assert_eq!(app.messages.original_index(1), 1);
+
+        // Apply a filter that includes the selected message
+        app.apply_message_filter("message");
+        assert_eq!(app.messages.active_items().len(), 3); // All messages contain "message"
+        assert_eq!(app.messages.selected(), Some(1)); // Should still be selected
+        assert_eq!(app.messages.original_index(1), 1); // Should still be the same original message
+
+        // Apply a filter that excludes the selected message (only "Second" matches)
+        app.apply_message_filter("second");
+        assert_eq!(app.messages.active_items().len(), 1); // Only message #2 matches
+        assert_eq!(app.messages.selected(), Some(0)); // Should select the first (and only) result
+        assert_eq!(app.messages.original_index(0), 1); // Which is the original message #2
+
+        // Go back to a broader search that includes multiple messages
+        app.apply_message_filter("m"); // Should match all messages (they all have "m" in "message")
+        assert_eq!(app.messages.active_items().len(), 3);
+        assert_eq!(app.messages.selected(), Some(1)); // Should still have message #2 selected
+        assert_eq!(app.messages.original_index(1), 1); // Verify it's still original message #2
+
+        // Select the third message (index 2 in filtered, original index 2)
+        app.messages.select(Some(2));
+        assert_eq!(app.messages.original_index(2), 2);
+
+        // Apply a filter that excludes the third message but includes the first
+        app.apply_message_filter("first");
+        assert_eq!(app.messages.active_items().len(), 1); // Only "First message" matches
+        assert_eq!(app.messages.selected(), Some(0)); // Should select the first result
+        assert_eq!(app.messages.original_index(0), 0); // Which is original message #1 (comes before #3)
+    }
+
+    #[test]
+    fn test_selection_preservation_on_search_mode_changes() {
+        let mut app = App::new(PathBuf::from("/tmp"), false);
+        app.screen = super::app::Screen::Messages;
+
+        // Create test messages
+        app.messages.items = vec![
+            super::project::HierarchicalMessage::new(
+                super::project::Message {
+                    msg_type: "user".to_string(),
+                    message: None,
+                    timestamp: chrono::Utc::now(),
+                    uuid: "msg1".to_string(),
+                    parent_uuid: None,
+                    is_sidechain: None,
+                    session_id: None,
+                    role: None,
+                    content: Some(serde_json::Value::String("First message".to_string())),
+                    user_type: None,
+                    cwd: None,
+                    version: None,
+                    git_branch: None,
+                    is_meta: None,
+                    request_id: None,
+                    model: None,
+                    usage: None,
+                    stop_reason: None,
+                    stop_sequence: None,
+                },
+                true,
+                0,
+            ),
+            super::project::HierarchicalMessage::new(
+                super::project::Message {
+                    msg_type: "assistant".to_string(),
+                    message: None,
+                    timestamp: chrono::Utc::now(),
+                    uuid: "msg2".to_string(),
+                    parent_uuid: Some("msg1".to_string()),
+                    is_sidechain: None,
+                    session_id: None,
+                    role: None,
+                    content: Some(serde_json::Value::String("Second message".to_string())),
+                    user_type: None,
+                    cwd: None,
+                    version: None,
+                    git_branch: None,
+                    is_meta: None,
+                    request_id: None,
+                    model: None,
+                    usage: None,
+                    stop_reason: None,
+                    stop_sequence: None,
+                },
+                false,
+                1,
+            ),
+            super::project::HierarchicalMessage::new(
+                super::project::Message {
+                    msg_type: "user".to_string(),
+                    message: None,
+                    timestamp: chrono::Utc::now(),
+                    uuid: "msg3".to_string(),
+                    parent_uuid: None,
+                    is_sidechain: None,
+                    session_id: None,
+                    role: None,
+                    content: Some(serde_json::Value::String("Third message".to_string())),
+                    user_type: None,
+                    cwd: None,
+                    version: None,
+                    git_branch: None,
+                    is_meta: None,
+                    request_id: None,
+                    model: None,
+                    usage: None,
+                    stop_reason: None,
+                    stop_sequence: None,
+                },
+                true,
+                0,
+            ),
+        ];
+
+        // Select the second message (index 1)
+        app.messages.select(Some(1));
+        assert_eq!(app.messages.selected(), Some(1));
+
+        // Enter search mode - should preserve selection
+        app.enter_search_mode();
+        assert!(app.search_mode);
+        assert_eq!(app.search_query, "");
+        assert_eq!(app.messages.selected(), Some(1)); // Should preserve selection
+        assert!(!app.messages.is_filtered()); // No filter applied yet
+
+        // Add some search text
+        app.add_to_search_query('s'); // "s"
+        app.add_to_search_query('e'); // "se"
+        app.add_to_search_query('c'); // "sec"
+        assert_eq!(app.messages.active_items().len(), 1); // Only "Second message" matches
+        assert_eq!(app.messages.selected(), Some(0)); // Should select the only result
+        assert_eq!(app.messages.original_index(0), 1); // Which is original message #2
+
+        // Exit search mode - should preserve selection (go back to message #2)
+        app.exit_search_mode();
+        assert!(!app.search_mode);
+        assert_eq!(app.search_query, "");
+        assert_eq!(app.messages.selected(), Some(1)); // Should preserve selection at original index 1
+        assert!(!app.messages.is_filtered()); // Filter should be cleared
+
+        // Test with a different starting selection
+        app.messages.select(Some(2)); // Select third message
+
+        // Enter search mode again
+        app.enter_search_mode();
+        assert_eq!(app.messages.selected(), Some(2)); // Should preserve selection
+
+        // Search for something that excludes the selected item
+        app.add_to_search_query('f'); // "f" - only "First message" matches
+        assert_eq!(app.messages.active_items().len(), 1);
+        assert_eq!(app.messages.selected(), Some(0)); // Should select the only result
+        assert_eq!(app.messages.original_index(0), 0); // Which is original message #1
+
+        // Exit search mode - should preserve selection (go back to message #1)
+        app.exit_search_mode();
+        assert_eq!(app.messages.selected(), Some(0)); // Should be at original message #1
     }
 }

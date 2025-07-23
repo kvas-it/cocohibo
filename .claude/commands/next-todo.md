@@ -10,4 +10,5 @@ implement, present just one.
 
 After the plan is confirmed, implement the code, make sure it has test
 coverage, run the linter and formatter on the changes. Also make sure the
-existing tests pass. Conclude with a summary of the changes made.
+existing tests pass. Update README.md if it makes sense for this change.
+Conclude with a summary of the changes made.

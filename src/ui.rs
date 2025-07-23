@@ -26,9 +26,8 @@ fn render_projects(f: &mut Frame, app: &mut App) {
     let available_name_width = (chunks[0].width as usize).saturating_sub(reserved_width);
 
     // First pass: truncate all project names and find max width
-    let truncated_names: Vec<String> = app
-        .projects
-        .items
+    let active_projects = app.projects.active_items();
+    let truncated_names: Vec<String> = active_projects
         .iter()
         .map(|project| truncate_from_beginning(&project.name, available_name_width))
         .collect();
@@ -40,9 +39,7 @@ fn render_projects(f: &mut Frame, app: &mut App) {
         .unwrap_or(0);
 
     // Second pass: create list items with consistent padding
-    let projects: Vec<ListItem> = app
-        .projects
-        .items
+    let projects: Vec<ListItem> = active_projects
         .iter()
         .enumerate()
         .map(|(i, project)| {
@@ -70,6 +67,8 @@ fn render_projects(f: &mut Frame, app: &mut App) {
                     Span::raw(" to page, "),
                     Span::styled("Enter/l", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" to select, "),
+                    Span::styled("/", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" search, "),
                     Span::styled("h/Esc", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" back, "),
                     Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
@@ -85,10 +84,12 @@ fn render_projects(f: &mut Frame, app: &mut App) {
 
     f.render_stateful_widget(list, chunks[0], &mut app.projects.state);
 
-    let status_text = if app.projects.is_empty() {
-        "No projects found"
+    let status_text = if app.search_mode {
+        format!("/{}", app.search_query)
+    } else if app.projects.is_empty() {
+        "No projects found".to_string()
     } else {
-        "Project list"
+        "Project list".to_string()
     };
 
     let status =
@@ -107,9 +108,8 @@ fn render_chats(f: &mut Frame, app: &mut App) {
     let available_name_width = (chunks[0].width as usize).saturating_sub(reserved_width);
 
     // First pass: truncate all chat names and find max width
-    let truncated_names: Vec<String> = app
-        .chats
-        .items
+    let active_chats = app.chats.active_items();
+    let truncated_names: Vec<String> = active_chats
         .iter()
         .map(|chat| truncate_string(&chat.name, available_name_width))
         .collect();
@@ -121,9 +121,7 @@ fn render_chats(f: &mut Frame, app: &mut App) {
         .unwrap_or(0);
 
     // Second pass: create list items with consistent padding
-    let chats: Vec<ListItem> = app
-        .chats
-        .items
+    let chats: Vec<ListItem> = active_chats
         .iter()
         .enumerate()
         .map(|(i, chat)| {
@@ -151,6 +149,8 @@ fn render_chats(f: &mut Frame, app: &mut App) {
                     Span::raw(" to page, "),
                     Span::styled("Enter/l", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" to select, "),
+                    Span::styled("/", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" search, "),
                     Span::styled("h/Esc", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" back, "),
                     Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
@@ -171,10 +171,12 @@ fn render_chats(f: &mut Frame, app: &mut App) {
         .map(|p| p.name.as_str())
         .unwrap_or("Unknown");
 
-    let status_text = if app.chats.is_empty() {
-        "No chats found"
+    let status_text = if app.search_mode {
+        format!("/{}", app.search_query)
+    } else if app.chats.is_empty() {
+        "No chats found".to_string()
     } else {
-        &format!("{} > Chat list", project_name)
+        format!("{} > Chat list", project_name)
     };
 
     let status =
@@ -215,10 +217,12 @@ fn render_messages(f: &mut Frame, app: &mut App) {
         .map(|c| c.name.as_str())
         .unwrap_or("Unknown");
 
-    let status_text = if app.messages.is_empty() {
-        "No messages found"
+    let status_text = if app.search_mode {
+        format!("/{}", app.search_query)
+    } else if app.messages.is_empty() {
+        "No messages found".to_string()
     } else {
-        &format!("{} > {} > Messages", project_name, chat_name)
+        format!("{} > {} > Messages", project_name, chat_name)
     };
 
     let status =
@@ -227,12 +231,11 @@ fn render_messages(f: &mut Frame, app: &mut App) {
 }
 
 fn render_message_list(f: &mut Frame, app: &mut App, area: ratatui::layout::Rect) {
-    let messages: Vec<ListItem> = app
-        .messages
-        .items
+    let active_messages = app.messages.active_items();
+    let messages: Vec<ListItem> = active_messages
         .iter()
         .enumerate()
-        .filter_map(|(i, hierarchical_message)| {
+        .filter_map(|(filtered_index, hierarchical_message)| {
             // Safely handle each message individually
             std::panic::catch_unwind(|| {
                 let message = &hierarchical_message.message;
@@ -269,9 +272,10 @@ fn render_message_list(f: &mut Frame, app: &mut App, area: ratatui::layout::Rect
                 let reserved_width = 3 + 1 + 4 + total_prefix_len;
                 let available_width = (area.width as usize).saturating_sub(reserved_width);
 
+                let original_message_number = app.messages.original_index(filtered_index) + 1;
                 let content_with_indent = format!(
                     "{:<3} {} {}{}{}",
-                    i + 1,
+                    original_message_number,
                     role_display,
                     indent,
                     connector,
@@ -290,9 +294,10 @@ fn render_message_list(f: &mut Frame, app: &mut App, area: ratatui::layout::Rect
             })
             .unwrap_or_else(|_| {
                 // If there's a panic, create an error message item
+                let original_message_number = app.messages.original_index(filtered_index) + 1;
                 ListItem::new(Line::from(vec![Span::raw(format!(
                     "{:<3} E [Error rendering message]",
-                    i + 1
+                    original_message_number
                 ))]))
             })
             .into()
@@ -310,6 +315,8 @@ fn render_message_list(f: &mut Frame, app: &mut App, area: ratatui::layout::Rect
                     Span::raw(" navigate, "),
                     Span::styled("J/K", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" initial msgs, "),
+                    Span::styled("/", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" search, "),
                     Span::styled("s", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" toggle split, "),
                     Span::styled("h/Esc", Style::default().add_modifier(Modifier::BOLD)),
