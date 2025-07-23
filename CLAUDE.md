@@ -18,11 +18,9 @@ history of a chat.
     - list of messages in the selected chat (populated when a chat is selected).
   - The model updates in reponse to user input.
   - We render the current screen (see model) as a list.
-- The main entry point is the `cocohibo` command (shorthand: `cch`).
-- Use `serde_jsonlines` to read and write JSONL files.
-- Use `chrono` for date and time handling.
+- The main entry point is the `cocohibo` command.
 
 ## Test data
 
-There is a test data in `tests` directory. It contains a couple of generated
+There is some test data in `tests` directory. It contains a couple of generated
 projects with some chats and messages. You can use it to test the application.

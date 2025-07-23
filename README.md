@@ -50,19 +50,59 @@ cocohibo
 cch
 ```
 
-### Custom Projects Directory
-
-By default, Cocohibo looks for Claude Code projects in `~/.claude/projects`. You can specify a different directory using the environment variable:
+### Command Line Options
 
 ```bash
-COCOHIBO_PROJECTS_DIR=/path/to/your/projects cocohibo
+cocohibo [OPTIONS]
+
+Options:
+  --projects-dir <PROJECTS_DIR>  Directory containing Claude Code projects
+  --vertical-split               Use vertical split (up/down) instead of horizontal split
+  -h, --help                     Print help
 ```
 
-### Navigation
+### Custom Projects Directory
 
-- Use arrow keys or vim-like keys (h/j/k/l) to navigate
-- Enter to select a project, chat, or view messages
-- ESC or q to go back or quit
+By default, Cocohibo looks for Claude Code projects in `~/.claude/projects`. You can specify a different directory in three ways (in order of precedence):
+
+1. **Command line argument**:
+   ```bash
+   cocohibo --projects-dir /path/to/your/projects
+   ```
+
+2. **Environment variable**:
+   ```bash
+   COCOHIBO_PROJECTS_DIR=/path/to/your/projects cocohibo
+   ```
+
+3. **Default**: `~/.claude/projects`
+
+### Key Bindings
+
+#### Navigation
+- **↑/↓** or **j/k**: Move selection up/down
+- **Enter** or **l**: Enter selected item (project → chats → messages)
+- **Esc** or **h**: Go back to previous view
+- **q**: Quit application
+- **Ctrl+C**: Quit application
+
+#### List Navigation
+- **PgUp/PgDn**: Page up/down
+- **Space**: Page down (Shift+Space for page up)
+- **g**: Go to top of list
+- **G**: Go to bottom of list
+- **z**: Select middle of screen
+- **t**: Select top of screen
+- **b**: Select bottom of screen
+
+#### Messages View Only
+- **J**: Jump to next initial message
+- **K**: Jump to previous initial message
+- **s**: Toggle between horizontal and vertical split layout
+
+#### Layout Options
+- **Default**: Horizontal split (message list left, details right)
+- **Vertical split**: Message list top, details bottom (use `--vertical-split` flag or press `s`)
 
 ## Architecture
 

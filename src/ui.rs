@@ -68,10 +68,12 @@ fn render_projects(f: &mut Frame, app: &mut App) {
                         Style::default().add_modifier(Modifier::BOLD),
                     ),
                     Span::raw(" to page, "),
-                    Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("Enter/l", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" to select, "),
-                    Span::styled("q/Esc", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to quit"),
+                    Span::styled("h/Esc", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" back, "),
+                    Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" quit"),
                 ])),
         )
         .highlight_style(
@@ -147,10 +149,12 @@ fn render_chats(f: &mut Frame, app: &mut App) {
                         Style::default().add_modifier(Modifier::BOLD),
                     ),
                     Span::raw(" to page, "),
-                    Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("Enter/l", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" to select, "),
-                    Span::styled("Esc/q", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to go back"),
+                    Span::styled("h/Esc", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" back, "),
+                    Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" quit"),
                 ])),
         )
         .highlight_style(
@@ -308,8 +312,10 @@ fn render_message_list(f: &mut Frame, app: &mut App, area: ratatui::layout::Rect
                     Span::raw(" initial msgs, "),
                     Span::styled("s", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(" toggle split, "),
-                    Span::styled("Esc/q", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" back"),
+                    Span::styled("h/Esc", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" back, "),
+                    Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" quit"),
                 ])),
         )
         .highlight_style(

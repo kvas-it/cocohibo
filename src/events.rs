@@ -20,7 +20,8 @@ fn handle_key_event(app: &mut App, key: KeyEvent, terminal_area: Rect) {
 
     match key.code {
         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => app.quit(),
-        KeyCode::Char('q') | KeyCode::Esc => app.go_back(),
+        KeyCode::Char('q') => app.quit(),
+        KeyCode::Esc | KeyCode::Char('h') => app.go_back(),
         KeyCode::Up | KeyCode::Char('k') => app.move_selection_up_with_size(page_size),
         KeyCode::Down | KeyCode::Char('j') => app.move_selection_down_with_size(page_size),
         KeyCode::PageUp => app.page_up(page_size),
@@ -32,7 +33,7 @@ fn handle_key_event(app: &mut App, key: KeyEvent, terminal_area: Rect) {
                 app.page_down(page_size);
             }
         }
-        KeyCode::Enter => {
+        KeyCode::Enter | KeyCode::Char('l') => {
             let result = match app.screen {
                 crate::app::Screen::Projects => app.open_project(),
                 crate::app::Screen::Chats => app.open_chat(),
