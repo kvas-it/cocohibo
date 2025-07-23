@@ -6,6 +6,8 @@ A terminal-based browser for Claude Code project history, built in Rust using Ra
 
 Cocohibo allows you to explore and navigate through your Claude Code projects and chat histories in an intuitive terminal interface. It provides a hierarchical view of your projects, chats within those projects, and individual messages within each chat conversation.
 
+![Screenshot of Cocohibo showing the messages view](docs/screenshot-messages.png)
+
 ## Features
 
 - Browse Claude Code projects stored in `~/.claude/projects`
