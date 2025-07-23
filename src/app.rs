@@ -273,6 +273,7 @@ pub struct App {
     pub search_mode: bool,
     pub search_query: String,
     pub current_project: Option<Project>,
+    pub current_chat: Option<Chat>,
 }
 
 impl App {
@@ -288,6 +289,7 @@ impl App {
             search_mode: false,
             search_query: String::new(),
             current_project: None,
+            current_chat: None,
         }
     }
 
@@ -347,6 +349,9 @@ impl App {
                 .join(&project.name)
                 .join(format!("{}.jsonl", chat.name));
 
+            // Store the current chat before clearing filters
+            self.current_chat = Some(chat.clone());
+
             let messages = crate::project::load_messages(&chat_path)?;
             self.messages.items = crate::project::build_message_hierarchy(messages);
             self.messages.state = ListState::default();
@@ -366,11 +371,23 @@ impl App {
             Screen::Messages => {
                 self.screen = Screen::Chats;
                 self.messages.items.clear();
+
+                // Restore chat selection if we have a current chat
+                if let Some(current_chat) = self.current_chat.clone() {
+                    self.find_and_select_chat(&current_chat.name);
+                }
             }
             Screen::Chats => {
                 self.screen = Screen::Projects;
                 self.chats.items.clear();
+
+                // Restore project selection if we have a current project
+                if let Some(current_project) = self.current_project.clone() {
+                    self.find_and_select_project(&current_project.name);
+                }
+
                 self.current_project = None; // Clear current project when going back to projects
+                self.current_chat = None; // Clear current chat as well
             }
             Screen::Projects => {
                 self.quit();
@@ -378,7 +395,7 @@ impl App {
         }
         self.search_mode = false;
         self.search_query.clear();
-        self.clear_search_filter();
+        self.clear_search_filter_with_preservation(true); // Preserve selection when clearing search
     }
 
     fn current_list_mut(&mut self) -> &mut dyn ListManagerTrait {
@@ -611,9 +628,29 @@ impl App {
     }
 
     fn clear_search_filter_with_preservation(&mut self, preserve_selection: bool) {
-        self.projects.clear_filter_with_preservation(preserve_selection);
-        self.chats.clear_filter_with_preservation(preserve_selection);
-        self.messages.clear_filter_with_preservation(preserve_selection);
+        self.projects
+            .clear_filter_with_preservation(preserve_selection);
+        self.chats
+            .clear_filter_with_preservation(preserve_selection);
+        self.messages
+            .clear_filter_with_preservation(preserve_selection);
+    }
+
+    fn find_and_select_project(&mut self, project_name: &str) {
+        if let Some(index) = self
+            .projects
+            .items
+            .iter()
+            .position(|p| p.name == project_name)
+        {
+            self.projects.select(Some(index));
+        }
+    }
+
+    fn find_and_select_chat(&mut self, chat_name: &str) {
+        if let Some(index) = self.chats.items.iter().position(|c| c.name == chat_name) {
+            self.chats.select(Some(index));
+        }
     }
 }
 

@@ -803,4 +803,78 @@ mod tests {
         app.exit_search_mode();
         assert_eq!(app.messages.selected(), Some(0)); // Should be at original message #1
     }
+
+    #[test]
+    fn test_selection_preservation_on_navigation() {
+        let mut app = App::new(PathBuf::from("/tmp"), false);
+
+        // Create test projects
+        app.projects.items = vec![
+            super::project::Project {
+                name: "project1".to_string(),
+                last_modified: chrono::Utc::now(),
+                chat_count: 1,
+            },
+            super::project::Project {
+                name: "project2".to_string(),
+                last_modified: chrono::Utc::now(),
+                chat_count: 2,
+            },
+            super::project::Project {
+                name: "project3".to_string(),
+                last_modified: chrono::Utc::now(),
+                chat_count: 3,
+            },
+        ];
+
+        // Create test chats for project2
+        let test_chats = vec![
+            super::project::Chat {
+                name: "chat1".to_string(),
+                last_modified: chrono::Utc::now(),
+                message_count: 10,
+            },
+            super::project::Chat {
+                name: "chat2".to_string(),
+                last_modified: chrono::Utc::now(),
+                message_count: 20,
+            },
+            super::project::Chat {
+                name: "chat3".to_string(),
+                last_modified: chrono::Utc::now(),
+                message_count: 30,
+            },
+        ];
+
+        // Select project2 (index 1) and simulate opening it
+        app.screen = super::app::Screen::Projects;
+        app.projects.select(Some(1));
+        assert_eq!(app.projects.selected(), Some(1));
+
+        // Simulate opening the project (manually set up the state)
+        app.current_project = Some(app.projects.items[1].clone());
+        app.chats.items = test_chats;
+        app.screen = super::app::Screen::Chats;
+        app.chats.select(Some(0)); // Select first chat by default
+
+        // Select chat2 (index 1)
+        app.chats.select(Some(1));
+        assert_eq!(app.chats.selected(), Some(1));
+
+        // Simulate opening the chat
+        app.current_chat = Some(app.chats.items[1].clone());
+        app.screen = super::app::Screen::Messages;
+
+        // Now go back from Messages to Chats
+        app.go_back();
+        assert_eq!(app.screen, super::app::Screen::Chats);
+        assert_eq!(app.chats.selected(), Some(1)); // Should preserve chat2 selection
+
+        // Go back from Chats to Projects
+        app.go_back();
+        assert_eq!(app.screen, super::app::Screen::Projects);
+        assert_eq!(app.projects.selected(), Some(1)); // Should preserve project2 selection
+        assert!(app.current_project.is_none()); // Should clear current project
+        assert!(app.current_chat.is_none()); // Should clear current chat
+    }
 }
