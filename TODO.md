@@ -7,10 +7,4 @@ the history of a chat.
 
 ## Tasks
 
-- Change the meaning of z/t/b keys in the message view:
-  - `t` should scroll the view so that selected item is at the top of the
-    view (or as close as possible)
-  - `z` should scroll the view so that selected item is at the center of the
-    view (or as close as possible)
-  - `b` should scroll the view so that selected item is at the bottom of the
-    view (or as close as possible)
+No tasks planned.

@@ -148,6 +148,28 @@ impl<T> ListManager<T> {
         }
     }
 
+    pub fn scroll_selected_to_top(&mut self) {
+        if let Some(selected) = self.state.selected() {
+            *self.state.offset_mut() = selected;
+        }
+    }
+
+    pub fn scroll_selected_to_center(&mut self, page_size: usize) {
+        if let Some(selected) = self.state.selected() {
+            let new_offset = selected.saturating_sub(page_size / 2);
+            let max_offset = self.active_items().len().saturating_sub(page_size);
+            *self.state.offset_mut() = new_offset.min(max_offset);
+        }
+    }
+
+    pub fn scroll_selected_to_bottom(&mut self, page_size: usize) {
+        if let Some(selected) = self.state.selected() {
+            let new_offset = selected.saturating_sub(page_size - 1);
+            let max_offset = self.active_items().len().saturating_sub(page_size);
+            *self.state.offset_mut() = new_offset.min(max_offset);
+        }
+    }
+
     fn scroll_to_selected(&mut self, visible_area: usize) {
         if let Some(selected) = self.state.selected() {
             let offset = self.state.offset();
@@ -401,6 +423,30 @@ impl App {
 
     pub fn select_bottom_of_screen(&mut self, page_size: usize) {
         self.current_list_mut().select_bottom_of_screen(page_size);
+    }
+
+    pub fn scroll_selected_to_top(&mut self) {
+        match self.screen {
+            Screen::Projects => self.projects.scroll_selected_to_top(),
+            Screen::Chats => self.chats.scroll_selected_to_top(),
+            Screen::Messages => self.messages.scroll_selected_to_top(),
+        }
+    }
+
+    pub fn scroll_selected_to_center(&mut self, page_size: usize) {
+        match self.screen {
+            Screen::Projects => self.projects.scroll_selected_to_center(page_size),
+            Screen::Chats => self.chats.scroll_selected_to_center(page_size),
+            Screen::Messages => self.messages.scroll_selected_to_center(page_size),
+        }
+    }
+
+    pub fn scroll_selected_to_bottom(&mut self, page_size: usize) {
+        match self.screen {
+            Screen::Projects => self.projects.scroll_selected_to_bottom(page_size),
+            Screen::Chats => self.chats.scroll_selected_to_bottom(page_size),
+            Screen::Messages => self.messages.scroll_selected_to_bottom(page_size),
+        }
     }
 
     pub fn go_to_next_initial_message(&mut self) {

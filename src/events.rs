@@ -15,8 +15,25 @@ pub fn handle_events(app: &mut App, terminal_area: Rect) -> io::Result<()> {
 }
 
 fn handle_key_event(app: &mut App, key: KeyEvent, terminal_area: Rect) {
-    // Calculate page size: terminal height - status bar (1) - borders (2)
-    let page_size = (terminal_area.height as usize).saturating_sub(3).max(1);
+    // Calculate page size based on the current screen
+    let page_size = match app.screen {
+        crate::app::Screen::Messages => {
+            // In messages view, we have split panes, so calculate based on the actual list area
+            let main_area_height = terminal_area.height.saturating_sub(1); // Subtract status bar
+            let list_area_height = if app.vertical_split {
+                // Vertical split (Direction::Vertical): message list on top, half height
+                (main_area_height / 2).saturating_sub(2) // Half height minus borders
+            } else {
+                // Horizontal split (Direction::Horizontal): message list on left, full height
+                main_area_height.saturating_sub(2) // Full height minus borders
+            };
+            (list_area_height as usize).max(1)
+        }
+        _ => {
+            // For Projects and Chats screens, use full terminal area
+            (terminal_area.height as usize).saturating_sub(3).max(1)
+        }
+    };
 
     if app.search_mode {
         handle_search_mode_key(app, key);
@@ -65,9 +82,9 @@ fn handle_normal_mode_key(app: &mut App, key: KeyEvent, page_size: usize) {
         }
         KeyCode::Char('g') => app.go_to_top(),
         KeyCode::Char('G') => app.go_to_bottom(),
-        KeyCode::Char('z') => app.select_middle_of_screen(page_size),
-        KeyCode::Char('t') => app.select_top_of_screen(),
-        KeyCode::Char('b') => app.select_bottom_of_screen(page_size),
+        KeyCode::Char('z') => app.scroll_selected_to_center(page_size),
+        KeyCode::Char('t') => app.scroll_selected_to_top(),
+        KeyCode::Char('b') => app.scroll_selected_to_bottom(page_size),
         KeyCode::Char('J') => app.go_to_next_initial_message(),
         KeyCode::Char('K') => app.go_to_previous_initial_message(),
         KeyCode::Char('s') => {
