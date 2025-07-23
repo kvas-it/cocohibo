@@ -145,7 +145,10 @@ impl Message {
                                                 if !result.is_empty() {
                                                     result.push_str("\n\n");
                                                 }
-                                                result.push_str(&format!("[Thinking]\n{}", thinking_text));
+                                                result.push_str(&format!(
+                                                    "[Thinking]\n{}",
+                                                    thinking_text
+                                                ));
                                             }
                                         }
                                     }
@@ -155,7 +158,10 @@ impl Message {
                                                 if !result.is_empty() {
                                                     result.push_str("\n\n");
                                                 }
-                                                result.push_str(&format!("[Tool Result]\n{}", content_str));
+                                                result.push_str(&format!(
+                                                    "[Tool Result]\n{}",
+                                                    content_str
+                                                ));
                                             }
                                         }
                                     }
@@ -204,7 +210,8 @@ impl Message {
                                                 if !result.is_empty() {
                                                     result.push(' ');
                                                 }
-                                                let safe_text = text_str.chars().take(1000).collect::<String>();
+                                                let safe_text =
+                                                    text_str.chars().take(1000).collect::<String>();
                                                 result.push_str(&safe_text);
                                             }
                                         }
@@ -225,9 +232,14 @@ impl Message {
                                                 if !result.is_empty() {
                                                     result.push(' ');
                                                 }
-                                                let safe_thinking =
-                                                    thinking_text.chars().take(50).collect::<String>();
-                                                result.push_str(&format!("[thinking: {}...]", safe_thinking));
+                                                let safe_thinking = thinking_text
+                                                    .chars()
+                                                    .take(50)
+                                                    .collect::<String>();
+                                                result.push_str(&format!(
+                                                    "[thinking: {}...]",
+                                                    safe_thinking
+                                                ));
                                             }
                                         }
                                     }
@@ -237,8 +249,14 @@ impl Message {
                                                 if !result.is_empty() {
                                                     result.push(' ');
                                                 }
-                                                let safe_content = content_str.chars().take(200).collect::<String>();
-                                                result.push_str(&format!("[tool result: {}]", safe_content));
+                                                let safe_content = content_str
+                                                    .chars()
+                                                    .take(200)
+                                                    .collect::<String>();
+                                                result.push_str(&format!(
+                                                    "[tool result: {}]",
+                                                    safe_content
+                                                ));
                                             }
                                         }
                                     }

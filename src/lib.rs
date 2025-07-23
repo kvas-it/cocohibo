@@ -236,11 +236,13 @@ mod tests {
 
     #[test]
     fn test_parse_sample_messages() {
-        let test_chat = std::path::Path::new("tests/sample-projects/test-project-1/basic-conversation.jsonl");
+        let test_chat =
+            std::path::Path::new("tests/sample-projects/test-project-1/basic-conversation.jsonl");
         if test_chat.exists() {
-            let messages = super::project::load_messages(test_chat).expect("Should parse test messages");
+            let messages =
+                super::project::load_messages(test_chat).expect("Should parse test messages");
             assert!(!messages.is_empty(), "Should have at least one message");
-            
+
             // Check that the first message has extended fields
             let first_msg = &messages[0];
             assert!(first_msg.user_type.is_some(), "Should have user_type field");
@@ -251,48 +253,75 @@ mod tests {
 
     #[test]
     fn test_parse_tool_usage_messages() {
-        let test_chat = std::path::Path::new("tests/sample-projects/test-project-1/tool-usage-example.jsonl");
+        let test_chat =
+            std::path::Path::new("tests/sample-projects/test-project-1/tool-usage-example.jsonl");
         if test_chat.exists() {
-            let messages = super::project::load_messages(test_chat).expect("Should parse tool usage messages");
+            let messages =
+                super::project::load_messages(test_chat).expect("Should parse tool usage messages");
             assert!(!messages.is_empty(), "Should have at least one message");
 
             // Find an assistant message with usage info
-            let assistant_msg = messages.iter().find(|m| m.get_role() == "assistant" && m.usage.is_some());
-            assert!(assistant_msg.is_some(), "Should have assistant message with usage info");
-            
+            let assistant_msg = messages
+                .iter()
+                .find(|m| m.get_role() == "assistant" && m.usage.is_some());
+            assert!(
+                assistant_msg.is_some(),
+                "Should have assistant message with usage info"
+            );
+
             if let Some(msg) = assistant_msg {
                 let usage = msg.usage.as_ref().unwrap();
-                assert!(usage.input_tokens.is_some() || usage.output_tokens.is_some(), 
-                       "Should have token usage information");
+                assert!(
+                    usage.input_tokens.is_some() || usage.output_tokens.is_some(),
+                    "Should have token usage information"
+                );
             }
         }
     }
 
     #[test]
     fn test_parse_messages_with_missing_fields() {
-        let test_chat = std::path::Path::new("tests/sample-projects/test-project-1/broken-message.jsonl");
+        let test_chat =
+            std::path::Path::new("tests/sample-projects/test-project-1/broken-message.jsonl");
         if test_chat.exists() {
-            let messages = super::project::load_messages(test_chat).expect("Should parse messages even with missing fields");
+            let messages = super::project::load_messages(test_chat)
+                .expect("Should parse messages even with missing fields");
             assert!(!messages.is_empty(), "Should have at least one message");
             assert_eq!(messages.len(), 5, "Should have parsed all 5 messages");
 
             // Check that messages without timestamp get a default timestamp
             let no_timestamp_msg = messages.iter().find(|m| m.uuid == "no-timestamp-msg");
-            assert!(no_timestamp_msg.is_some(), "Should have parsed message without timestamp");
-            
+            assert!(
+                no_timestamp_msg.is_some(),
+                "Should have parsed message without timestamp"
+            );
+
             if let Some(msg) = no_timestamp_msg {
                 // Should have a default timestamp (epoch time)
-                assert_eq!(msg.timestamp.timestamp(), 0, "Should have default epoch timestamp");
+                assert_eq!(
+                    msg.timestamp.timestamp(),
+                    0,
+                    "Should have default epoch timestamp"
+                );
             }
 
             // Check that messages without UUID get a generated UUID
-            let generated_uuid_msgs: Vec<_> = messages.iter().filter(|m| m.uuid.starts_with("generated-uuid-")).collect();
-            assert!(!generated_uuid_msgs.is_empty(), "Should have messages with generated UUIDs");
+            let generated_uuid_msgs: Vec<_> = messages
+                .iter()
+                .filter(|m| m.uuid.starts_with("generated-uuid-"))
+                .collect();
+            assert!(
+                !generated_uuid_msgs.is_empty(),
+                "Should have messages with generated UUIDs"
+            );
 
             // Check that each generated UUID is unique
             let mut seen_uuids = std::collections::HashSet::new();
             for msg in &generated_uuid_msgs {
-                assert!(seen_uuids.insert(&msg.uuid), "Generated UUIDs should be unique");
+                assert!(
+                    seen_uuids.insert(&msg.uuid),
+                    "Generated UUIDs should be unique"
+                );
             }
         }
     }
