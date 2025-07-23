@@ -369,11 +369,11 @@ fn render_message_details(f: &mut Frame, app: &mut App, area: ratatui::layout::R
         details.push(Line::from(vec![
             Span::styled("Content:", Style::default().add_modifier(Modifier::BOLD))
         ]));
-        let content_text = message.get_content_text();
+        let content_text = message.get_detailed_content();
         let content_lines: Vec<Line> = content_text
             .lines()
-            .take(20) // Limit to avoid overwhelming the display
-            .map(|line| Line::from(truncate_string(line, area.width as usize - 4)))
+            .take(50) // Increased limit for detailed view
+            .map(|line| Line::from(line.to_string())) // Remove truncation to allow wrapping
             .collect();
         details.extend(content_lines);
 

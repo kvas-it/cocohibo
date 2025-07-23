@@ -96,6 +96,89 @@ pub struct Message {
 }
 
 impl Message {
+    pub fn get_detailed_content(&self) -> String {
+        std::panic::catch_unwind(|| {
+            let content_value = if let Some(ref inner_message) = self.message {
+                &inner_message.content
+            } else if let Some(ref content) = self.content {
+                content
+            } else {
+                return format!("[{}]", self.msg_type);
+            };
+
+            match content_value {
+                Value::String(s) => s.clone(),
+                Value::Array(arr) => {
+                    let mut result = String::new();
+                    for item in arr {
+                        if let Some(item_type) = item.get("type") {
+                            if let Some(type_str) = item_type.as_str() {
+                                match type_str {
+                                    "text" => {
+                                        if let Some(text) = item.get("text") {
+                                            if let Some(text_str) = text.as_str() {
+                                                if !result.is_empty() {
+                                                    result.push_str("\n\n");
+                                                }
+                                                result.push_str(text_str);
+                                            }
+                                        }
+                                    }
+                                    "tool_use" => {
+                                        if !result.is_empty() {
+                                            result.push_str("\n\n");
+                                        }
+                                        if let Some(name) = item.get("name") {
+                                            if let Some(name_str) = name.as_str() {
+                                                result.push_str(&format!("[Tool: {}]\n", name_str));
+                                            }
+                                        }
+                                        if let Some(input) = item.get("input") {
+                                            let input_str = serde_json::to_string_pretty(input)
+                                                .unwrap_or_else(|_| format!("{:?}", input));
+                                            result.push_str(&format!("Parameters:\n{}", input_str));
+                                        }
+                                    }
+                                    "thinking" => {
+                                        if let Some(thinking) = item.get("thinking") {
+                                            if let Some(thinking_text) = thinking.as_str() {
+                                                if !result.is_empty() {
+                                                    result.push_str("\n\n");
+                                                }
+                                                result.push_str(&format!("[Thinking]\n{}", thinking_text));
+                                            }
+                                        }
+                                    }
+                                    "tool_result" => {
+                                        if let Some(content) = item.get("content") {
+                                            if let Some(content_str) = content.as_str() {
+                                                if !result.is_empty() {
+                                                    result.push_str("\n\n");
+                                                }
+                                                result.push_str(&format!("[Tool Result]\n{}", content_str));
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                    if result.is_empty() {
+                        format!("[{} content]", self.msg_type)
+                    } else {
+                        result
+                    }
+                }
+                other => {
+                    let display_str = format!("{:?}", other);
+                    format!("[{}: {}]", self.msg_type, display_str)
+                }
+            }
+        })
+        .unwrap_or_else(|_| format!("[Error parsing {} content]", self.msg_type))
+    }
+
     pub fn get_content_text(&self) -> String {
         std::panic::catch_unwind(|| {
             let content_value = if let Some(ref inner_message) = self.message {
@@ -111,12 +194,64 @@ impl Message {
                 Value::Array(arr) => {
                     let mut result = String::new();
                     for item in arr {
-                        if let Some(text) = item.get("text") {
+                        // Handle content blocks with type field
+                        if let Some(item_type) = item.get("type") {
+                            if let Some(type_str) = item_type.as_str() {
+                                match type_str {
+                                    "text" => {
+                                        if let Some(text) = item.get("text") {
+                                            if let Some(text_str) = text.as_str() {
+                                                if !result.is_empty() {
+                                                    result.push(' ');
+                                                }
+                                                let safe_text = text_str.chars().take(1000).collect::<String>();
+                                                result.push_str(&safe_text);
+                                            }
+                                        }
+                                    }
+                                    "tool_use" => {
+                                        if let Some(name) = item.get("name") {
+                                            if let Some(name_str) = name.as_str() {
+                                                if !result.is_empty() {
+                                                    result.push(' ');
+                                                }
+                                                result.push_str(&format!("[tool: {}]", name_str));
+                                            }
+                                        }
+                                    }
+                                    "thinking" => {
+                                        if let Some(thinking) = item.get("thinking") {
+                                            if let Some(thinking_text) = thinking.as_str() {
+                                                if !result.is_empty() {
+                                                    result.push(' ');
+                                                }
+                                                let safe_thinking =
+                                                    thinking_text.chars().take(50).collect::<String>();
+                                                result.push_str(&format!("[thinking: {}...]", safe_thinking));
+                                            }
+                                        }
+                                    }
+                                    "tool_result" => {
+                                        if let Some(content) = item.get("content") {
+                                            if let Some(content_str) = content.as_str() {
+                                                if !result.is_empty() {
+                                                    result.push(' ');
+                                                }
+                                                let safe_content = content_str.chars().take(200).collect::<String>();
+                                                result.push_str(&format!("[tool result: {}]", safe_content));
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                        // Fallback to original logic for backwards compatibility
+                        else if let Some(text) = item.get("text") {
                             if let Some(text_str) = text.as_str() {
                                 if !result.is_empty() {
                                     result.push(' ');
                                 }
-                                // Safely handle potentially invalid UTF-8 or very long strings
                                 let safe_text = text_str.chars().take(1000).collect::<String>();
                                 result.push_str(&safe_text);
                             }
